@@ -101,21 +101,25 @@ inline void bhForce(Octree* node, Particle& p, real theta, real dt)
     real dy = node->cy - p.y;
     real dz = node->cz - p.z;
 
-    real dist = sqrt(dx*dx + dy*dy + dz*dz) + 1e-6;
+    real r2 = dx*dx + dy*dy + dz*dz + real(1e-6);
 
-    // Barnes–Hut acceptance criterion
+    // Barnes–Hut acceptance
+    real dist = sqrt(r2);
     if (node->leaf || (node->size / dist) < theta) {
-        real inv = 1.0 / (dist * dist * dist);
-        real f = node->m * inv * dt;
+
+        // division-free inverse distance cubed
+        real invDist = rsqrt(r2);
+        real invDist3 = invDist * invDist * invDist;
+
+        real f = node->m * invDist3 * dt;
+
         p.vx += dx * f;
         p.vy += dy * f;
         p.vz += dz * f;
         return;
     }
 
-    // Otherwise recurse into children
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < 8; i++)
         if (node->child[i])
             bhForce(node->child[i], p, theta, dt);
-    }
 }
