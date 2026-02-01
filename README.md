@@ -19,11 +19,18 @@ velocity (vx, vy, vz);
 mass (m);
 ```
 
-### NEXT uses a CMake configuration. 
+### Building NEXT
 ```bash
 mkdir build
 cd build
 cmake .. 
-cmake --build . 
+cmake --build . --config Release
 cd ..
+```
+
+### Running a Demo
+```bash
+cd examples/TwoBodies
+python two_body.py
+../../next two_body.txt 0.1
 ```
