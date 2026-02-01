@@ -2,8 +2,15 @@
 #include "../struct/particle.h"
 #include <vector>
 
+// Forward declaration so bhForce() can accept Octree*
+struct Octree;
+
+// Function declaration
 void bhForce(Octree* node, Particle& p, real theta, real dt);
 
+// =========================
+// Octree definition
+// =========================
 struct Octree {
     real cx, cy, cz;     // center of mass
     real m;              // total mass
@@ -14,7 +21,8 @@ struct Octree {
     Octree* child[8] = {nullptr};
 
     Octree(real X, real Y, real Z, real S)
-        : x(X), y(Y), z(Z), size(S), m(0), cx(0), cy(0), cz(0) {}
+        : cx(0), cy(0), cz(0), m(0),
+          x(X), y(Y), z(Z), size(S) {}
 
     ~Octree() {
         for (auto c : child) delete c;
@@ -87,6 +95,9 @@ struct Octree {
     }
 };
 
+// =========================
+// Barnes–Hut force function
+// =========================
 inline void bhForce(Octree* node, Particle& p, real theta, real dt)
 {
     if (!node || node->m == 0) return;
