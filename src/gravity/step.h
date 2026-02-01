@@ -16,7 +16,7 @@ inline void Step(std::vector<Particle>& p, real dt) {
     real theta = 0.5;
 
     #pragma omp parallel for schedule(static)
-    for (int i = 0; I < p.size(); i++) {
+    for (int i = 0; i < p.size(); i++) {
        bhForce(&root, p[I], theta, dt);
     }
 
