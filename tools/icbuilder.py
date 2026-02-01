@@ -134,3 +134,86 @@ def two_galaxies(
         ))
 
     return particles
+
+def composite_galaxy(
+    N_bulge, bulge_scale, bulge_mass,
+    N_disk,  disk_scale,  disk_mass, disk_thickness=0.1,
+    N_halo=0, halo_scale=1.0, halo_mass=0.0
+):
+    """
+    Builds a composite galaxy:
+    - Hernquist bulge
+    - Exponential disk
+    - Optional Hernquist halo
+    """
+
+    particles = []
+
+    # Bulge
+    if N_bulge > 0:
+        bulge = hernquist(N_bulge, bulge_scale, bulge_mass)
+        particles.extend(bulge)
+
+    # Disk
+    if N_disk > 0:
+        disk_p = disk(N_disk, disk_scale, disk_mass, disk_thickness)
+        particles.extend(disk_p)
+
+    # Halo (optional)
+    if N_halo > 0:
+        halo = hernquist(N_halo, halo_scale, halo_mass)
+        particles.extend(halo)
+
+    return particles
+
+def uniform_sphere(N, radius=1.0, mass=1.0):
+    particles = []
+    for _ in range(N):
+        # Sample inside sphere with r ∝ u^(1/3)
+        u = random.random()
+        r = radius * (u ** (1/3))
+
+        theta = math.acos(2*random.random() - 1)
+        phi = 2 * math.pi * random.random()
+
+        x = r * math.sin(theta) * math.cos(phi)
+        y = r * math.sin(theta) * math.sin(phi)
+        z = r * math.cos(theta)
+
+        particles.append((x, y, z, 0, 0, 0, mass / N))
+    return particles
+
+def binary_system(separation=1.0, mass1=1.0, mass2=1.0):
+    M = mass1 + mass2
+    r1 = -mass2 / M * separation
+    r2 =  mass1 / M * separation
+
+    v = math.sqrt(M / separation)
+
+    return [
+        (r1, 0, 0, 0,  v, 0, mass1),
+        (r2, 0, 0, 0, -v, 0, mass2)
+    ]
+
+def three_body_figure_eight(mass=1.0):
+    """
+    Classic equal-mass figure-eight three-body solution.
+    Positions and velocities are scaled to G = 1.
+    """
+
+    m = mass
+
+    # Standard initial conditions (Chenciner & Montgomery / Moore orbit)
+    x1, y1 = -0.97000436,  0.24308753
+    x2, y2 =  0.97000436, -0.24308753
+    x3, y3 =  0.0,         0.0
+
+    vx1, vy1 =  0.4662036850,  0.4323657300
+    vx2, vy2 =  0.4662036850,  0.4323657300
+    vx3, vy3 = -0.93240737,   -0.86473146
+
+    return [
+        (x1, y1, 0.0, vx1, vy1, 0.0, m),
+        (x2, y2, 0.0, vx2, vy2, 0.0, m),
+        (x3, y3, 0.0, vx3, vy3, 0.0, m),
+    ]
