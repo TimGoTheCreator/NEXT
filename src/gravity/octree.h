@@ -1,7 +1,6 @@
 #pragma once
-#include "struct/particle.h"
+#include "../struct/particle.h"
 #include <vector>
-#include"floatdef.h"
 
 struct Octree {
     real cx, cy, cz;     // center of mass
@@ -85,34 +84,3 @@ struct Octree {
         }
     }
 };
-
-inline void bhForce(const Octree* node, Particle& p, real theta, real dt)
-{
-    if (!node  node->m == 0) return;
-
-    real dx = node->cx - p.x;
-    real dy = node->cy - p.y;
-    real dz = node->cz - p.z;
-    real distSq = dx*dx + dy*dy + dz*dz + real(1e-6);
-    real dist = std::sqrt(distSq);
-
-    // Opening criterion
-    if (node->leaf  (node->size / dist) < theta) {
-        constexpr real G = real(6.67430e-11);
-        real invDist = real(1) / dist;
-        real invDist3 = invDist * invDist * invDist;
-
-        real ax = G * node->m * dx * invDist3;
-        real ay = G * node->m * dy * invDist3;
-        real az = G * node->m * dz * invDist3;
-
-        p.vx += ax * dt;
-        p.vy += ay * dt;
-        p.vz += az * dt;
-        return;
-    }
-
-    // Otherwise descend
-    for (auto c : node->child)
-        if (c) bhForce(c, p, theta, dt);
-}
