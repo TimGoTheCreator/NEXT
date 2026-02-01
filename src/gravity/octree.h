@@ -2,6 +2,8 @@
 #include "../struct/particle.h"
 #include <vector>
 
+void bhForce(Octree* node, Particle& p, real theta, real dt);
+
 struct Octree {
     real cx, cy, cz;     // center of mass
     real m;              // total mass
@@ -84,3 +86,30 @@ struct Octree {
         }
     }
 };
+
+inline void bhForce(Octree* node, Particle& p, real theta, real dt)
+{
+    if (!node || node->m == 0) return;
+
+    real dx = node->cx - p.x;
+    real dy = node->cy - p.y;
+    real dz = node->cz - p.z;
+
+    real dist = sqrt(dx*dx + dy*dy + dz*dz) + 1e-6;
+
+    // Barnes–Hut acceptance criterion
+    if (node->leaf || (node->size / dist) < theta) {
+        real inv = 1.0 / (dist * dist * dist);
+        real f = node->m * inv * dt;
+        p.vx += dx * f;
+        p.vy += dy * f;
+        p.vz += dz * f;
+        return;
+    }
+
+    // Otherwise recurse into children
+    for (int i = 0; i < 8; i++) {
+        if (node->child[i])
+            bhForce(node->child[i], p, theta, dt);
+    }
+}
