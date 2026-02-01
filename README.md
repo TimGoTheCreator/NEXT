@@ -1,5 +1,4 @@
 # NEXT - Newtonian EXact Trajectories
-#SIMD and FP
 
 ### NEXT supports four operating modes:
 FP32, FP64, SIMD32, SIMD64
