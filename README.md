@@ -37,3 +37,6 @@ cd examples/TwoBodies
 python two_body.py
 ../../next two_body.txt 0.1
 ```
+
+### Next Mathematics
+NEXT uses Division-avoiding algebra optimizations to make the simulation run faster. 
