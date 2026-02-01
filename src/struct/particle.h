@@ -28,9 +28,12 @@ inline void Gravity(Particle& a, Particle& b, real dt)
         real ay = G * b.m * dy * invDist3;
         real az = G * b.m * dz * invDist3;
 
-        real bx = -ax * a.m / b.m;
-        real by = -ay * a.m / b.m;
-        real bz = -az * a.m / b.m;
+        real inv_bm = real(1) / b.m;
+        real scale = -a.m * inv_bm;
+
+        real bx = ax * scale;
+        real by = ay * scale;
+        real bz = az * scale;
 
         a.vx += ax * dt;
         a.vy += ay * dt;
