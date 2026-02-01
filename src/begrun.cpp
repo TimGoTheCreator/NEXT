@@ -2,7 +2,7 @@
 #include<iostream>
 #include<fstream>
 #include"floatdef.h"
-#include"adaptive.h"
+#include"dt/adaptive.h"
 
 std::vector<Particle> LoadParticlesFromFile(const std::string& filename)
 {
@@ -48,3 +48,4 @@ int main(int argc, char** argv) {
     
     
 }
+
