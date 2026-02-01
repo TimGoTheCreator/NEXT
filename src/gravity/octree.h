@@ -2,7 +2,6 @@
 #include "../struct/particle.h"
 #include <vector>
 
-
 // =========================
 // Octree definition
 // =========================
@@ -89,6 +88,12 @@ struct Octree {
         }
     }
 };
+
+inline float rsqrt(float x) {
+    float y = _mm_cvtss_f32(_mm_rsqrt_ss(_mm_set_ss(x)));
+    // optional refinement:
+    return y * (1.5f - 0.5f * x * y * y);
+}
 
 // =========================
 // Barnes–Hut force function
