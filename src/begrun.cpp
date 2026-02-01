@@ -27,8 +27,9 @@ int main(int argc, char** argv) {
     << "NN  NNN  EE        XX XX     TTT  \n"
     << "NN   NN  EEEEEEE  XX   XX    TTT  \n"
     << "Newtonian EXact Trajectories\n";
+    // Print the Splash
 
-    if (argc != 4)
+    if (argc != 4) // if there wasnt 3 of parameters set, throw a cerr
     {
         std::cerr << "No parameter file specified\n";
         std::cerr << "Usage: next <initial.txt> <dt> <dump_interval>\n";
@@ -54,15 +55,15 @@ int main(int argc, char** argv) {
         if (simTime >= nextDump)
         {
             std::string out = "dump_" + std::to_string(step) + ".vtk";
-            SaveVTK(particles, out);
-            std::cout << "Wrote: " << out << "\n";
+            SaveVTK(particles, out); // save the file
+            std::cout << "Wrote: " << out << "\n"; // say you wrote the file
             nextDump += cacheInterval;
         }
 
-        step++;
+        step++; // increase counter by 1
     }
 
-    return 0;
+    return 0; // end if succeeded, well probably not it never ends anyway. 
     
     
 }
