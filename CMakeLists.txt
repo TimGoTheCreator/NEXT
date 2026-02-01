@@ -84,7 +84,6 @@ add_executable(next ${SRC_FILES})
 # Pre-install OpenMP if needed (Clang/Linux)
 # ============================
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND UNIX AND NOT APPLE)
-    # Try a couple of common libomp locations; if missing, install
     if(NOT EXISTS "/usr/lib/llvm-18/lib/libomp.so"
        AND NOT EXISTS "/usr/lib/x86_64-linux-gnu/libomp.so"
        AND NOT EXISTS "/usr/lib/libomp.so")
@@ -115,15 +114,4 @@ if(OpenMP_CXX_FOUND)
     target_link_libraries(next PRIVATE OpenMP::OpenMP_CXX)
 else()
     message(STATUS "OpenMP not found — building in single-threaded mode.")
-endif()
-        message(FATAL_ERROR "Automatic OpenMP installation not supported on this OS.")
-    endif()
-
-    if(OMP_INSTALL_RESULT EQUAL 0)
-        message(STATUS "OpenMP installed successfully. Re-run CMake configuration.")
-        message(FATAL_ERROR "")
-    else()
-        message(FATAL_ERROR "Automatic OpenMP installation failed. Check CI logs and package manager output.")
-    endif()
-
 endif()
