@@ -29,5 +29,3 @@ inline void Step(std::vector<Particle>& p, real dt) {
     
     
 }
-
-
