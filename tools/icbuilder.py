@@ -245,3 +245,89 @@ def four_body_cross(mass=1.0):
         (x3, y3, 0.0, vx3, vy3, 0.0, m),
         (x4, y4, 0.0, vx4, vy4, 0.0, m),
     ]
+
+def random_solar_system(
+    seed_value=None,
+    star_mass_range=(0.5, 2.0),
+    planet_count_range=(1, 12),
+    planet_mass_range=(1e-6, 1e-3),
+    semi_major_axis_range=(0.3, 40.0),
+    eccentricity_range=(0.0, 0.3),
+    inclination_range=(0.0, 5.0),  # degrees
+    moon_chance=0.25,
+    max_moons=3
+):
+    """
+    Generates a random solar system using Keplerian orbits.
+    Returns a list of (x, y, z, vx, vy, vz, m) particles.
+    """
+
+    if seed_value is not None:
+        random.seed(seed_value)
+
+    particles = []
+
+    # --- 1. STAR ---
+    star_mass = random.uniform(*star_mass_range)
+    particles.append((0.0, 0.0, 0.0, 0.0, 0.0, 0.0, star_mass))
+
+    # --- 2. PLANETS ---
+    num_planets = random.randint(*planet_count_range)
+
+    for _ in range(num_planets):
+        m = random.uniform(*planet_mass_range)
+
+        # Orbital parameters
+        a = random.uniform(*semi_major_axis_range)  # semi-major axis
+        e = random.uniform(*eccentricity_range)
+        inc = math.radians(random.uniform(*inclination_range))
+        phase = random.uniform(0, 2*math.pi)
+
+        # Distance at given phase
+        r = a * (1 - e**2) / (1 + e * math.cos(phase))
+
+        # Position in orbital plane
+        x = r * math.cos(phase)
+        y = r * math.sin(phase)
+        z = 0.0
+
+        # Rotate by inclination
+        z = x * math.sin(inc)
+        x = x * math.cos(inc)
+
+        # Orbital velocity magnitude (vis-viva)
+        v = math.sqrt(star_mass * (2/r - 1/a))
+
+        # Velocity direction (perpendicular to radius vector)
+        vx = -v * math.sin(phase)
+        vy =  v * math.cos(phase)
+        vz = 0.0
+
+        # Rotate velocity by inclination
+        vz = vx * math.sin(inc)
+        vx = vx * math.cos(inc)
+
+        particles.append((x, y, z, vx, vy, vz, m))
+
+        # --- 3. MOONS ---
+        if random.random() < moon_chance:
+            moon_count = random.randint(1, max_moons)
+            for _ in range(moon_count):
+                mm = m * random.uniform(0.001, 0.05)
+                da = random.uniform(0.01, 0.2)  # moon orbit radius
+                phase_m = random.uniform(0, 2*math.pi)
+
+                # Moon position relative to planet
+                mx = x + da * math.cos(phase_m)
+                my = y + da * math.sin(phase_m)
+                mz = z
+
+                # Moon velocity relative to planet
+                vm = math.sqrt(m / da)
+                mvx = vx - vm * math.sin(phase_m)
+                mvy = vy + vm * math.cos(phase_m)
+                mvz = vz
+
+                particles.append((mx, my, mz, mvx, mvy, mvz, mm))
+
+    return particles
