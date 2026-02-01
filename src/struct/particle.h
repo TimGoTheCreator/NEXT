@@ -16,31 +16,29 @@ inline void Gravity(Particle& a, Particle& b, real dt)
     real dx = b.x - a.x;
     real dy = b.y - a.y;
     real dz = b.z - a.z;
-    real distSq = dx*dx + dy*dy + dz*dz;
+    real eps = real(1e-6);
+    real distSq = dx*dx + dy*dy + dz*dz + eps*eps;
     real dist = std::sqrt(distSq);
 
-    if (dist > real(1e-5))
-    {
-        real invDist = real(1) / dist;
-        real invDist3 = invDist * invDist * invDist;
+    real invDist = real(1) / dist;
+    real invDist3 = invDist * invDist * invDist;
         
-        real ax = G * b.m * dx * invDist3;
-        real ay = G * b.m * dy * invDist3;
-        real az = G * b.m * dz * invDist3;
+    real ax = G * b.m * dx * invDist3;
+    real ay = G * b.m * dy * invDist3;
+    real az = G * b.m * dz * invDist3;
 
-        real inv_bm = real(1) / b.m;
-        real scale = -a.m * inv_bm;
+    real inv_bm = real(1) / b.m;
+    real scale = -a.m * inv_bm;
 
-        real bx = ax * scale;
-        real by = ay * scale;
-        real bz = az * scale;
+    real bx = ax * scale;
+    real by = ay * scale;
+    real bz = az * scale;
 
-        a.vx += ax * dt;
-        a.vy += ay * dt;
-        a.vz += az * dt;
+    a.vx += ax * dt;
+    a.vy += ay * dt;
+    a.vz += az * dt;
 
-        b.vx += bx * dt;
-        b.vy += by * dt;
-        b.vz += bz * dt;
-    }
+    b.vx += bx * dt;
+    b.vy += by * dt;
+    b.vz += bz * dt;
 }
