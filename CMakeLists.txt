@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.10)
 
 project(NEXT)
 
+# Output directories
 set(CMAKE_BINARY_DIR ${CMAKE_SOURCE_DIR}/build)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
@@ -15,11 +16,25 @@ option(NEXT_SIMD64      "Use 64-bit SIMD (SSE)"             OFF)
 option(NEXT_AVX512_32   "Use 32-bit SIMD (AVX-512)"         OFF)
 option(NEXT_AVX512_64   "Use 64-bit SIMD (AVX-512)"         OFF)
 
-# Count enabled modes
-math(EXPR NEXT_MODE_COUNT
-    "${NEXT_FP32} + ${NEXT_FP64} + ${NEXT_SIMD32} + ${NEXT_SIMD64} + ${NEXT_AVX512_32} + ${NEXT_AVX512_64}"
+# List of all modes
+set(NEXT_MODES
+    NEXT_FP32
+    NEXT_FP64
+    NEXT_SIMD32
+    NEXT_SIMD64
+    NEXT_AVX512_32
+    NEXT_AVX512_64
 )
 
+# Count enabled modes
+set(NEXT_MODE_COUNT 0)
+foreach(m ${NEXT_MODES})
+    if(${m})
+        math(EXPR NEXT_MODE_COUNT "${NEXT_MODE_COUNT} + 1")
+    endif()
+endforeach()
+
+# Enforce exactly one mode
 if(NEXT_MODE_COUNT EQUAL 0)
     message(FATAL_ERROR "You must enable one precision/SIMD mode.")
 elseif(NEXT_MODE_COUNT GREATER 1)
@@ -51,8 +66,9 @@ elseif(NEXT_AVX512_64)
 
 endif()
 
+# Includes and sources
 include_directories(${CMAKE_SOURCE_DIR}/include)
-
 file(GLOB SRC_FILES ${CMAKE_SOURCE_DIR}/src/*.cpp)
 
+# Build executable
 add_executable(next ${SRC_FILES})
