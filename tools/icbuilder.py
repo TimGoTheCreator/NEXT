@@ -217,3 +217,31 @@ def three_body_figure_eight(mass=1.0):
         (x2, y2, 0.0, vx2, vy2, 0.0, m),
         (x3, y3, 0.0, vx3, vy3, 0.0, m),
     ]
+
+def four_body_cross(mass=1.0):
+    """
+    Symmetric four-body 'cross' choreography.
+    Four equal masses start on cardinal axes and orbit the barycenter.
+    """
+
+    m = mass
+
+    # Standard symmetric initial conditions (scaled for G = 1)
+    # Positions:
+    x1, y1 =  1.0,  0.0
+    x2, y2 = -1.0,  0.0
+    x3, y3 =  0.0,  1.0
+    x4, y4 =  0.0, -1.0
+
+    # Velocities chosen to produce the cross choreography
+    vx1, vy1 =  0.0,  0.5
+    vx2, vy2 =  0.0, -0.5
+    vx3, vy3 = -0.5,  0.0
+    vx4, vy4 =  0.5,  0.0
+
+    return [
+        (x1, y1, 0.0, vx1, vy1, 0.0, m),
+        (x2, y2, 0.0, vx2, vy2, 0.0, m),
+        (x3, y3, 0.0, vx3, vy3, 0.0, m),
+        (x4, y4, 0.0, vx4, vy4, 0.0, m),
+    ]
