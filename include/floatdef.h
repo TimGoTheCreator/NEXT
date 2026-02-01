@@ -34,6 +34,19 @@
 
 
 //---------------------------------------------
+// Scalar operator overloads (uniform interface)
+//---------------------------------------------
+#if defined(NEXT_FP32) || defined(NEXT_FP64)
+
+inline real operator+(real a, real b) { return a + b; }
+inline real operator-(real a, real b) { return a - b; }
+inline real operator*(real a, real b) { return a * b; }
+inline real operator/(real a, real b) { return a / b; }
+
+#endif
+
+
+//---------------------------------------------
 // SIMD operator overloads
 //---------------------------------------------
 #if defined(NEXT_SIMD32)
