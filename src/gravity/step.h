@@ -21,12 +21,13 @@ inline void Step(std::vector<Particle>& p, real dt) {
     }
 
     #pragma omp parallel for
-    for (auto& a : p) {
-        a.x += a.vx * dt;
-        a.y += a.vy * dt;
-        a.z += a.vz * dt;
-    }
+    for (int i = 0; i < p.size(); i++) {
+    p[i].x += p[i].vx * dt;
+    p[i].y += p[i].vy * dt;
+    p[i].z += p[i].vz * dt;
+}
     
     
 }
+
 
