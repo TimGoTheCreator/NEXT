@@ -81,60 +81,41 @@ file(GLOB SRC_FILES ${CMAKE_SOURCE_DIR}/src/*.cpp)
 add_executable(next ${SRC_FILES})
 
 # ============================
-# OpenMP detection + CI-safe auto-install
+# Pre-install OpenMP if needed (Clang/Linux)
+# ============================
+if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND UNIX AND NOT APPLE)
+    # Try a couple of common libomp locations; if missing, install
+    if(NOT EXISTS "/usr/lib/llvm-18/lib/libomp.so"
+       AND NOT EXISTS "/usr/lib/x86_64-linux-gnu/libomp.so"
+       AND NOT EXISTS "/usr/lib/libomp.so")
+        message(STATUS "Clang detected — installing OpenMP before configuration...")
+
+        if(EXISTS "/usr/bin/apt")
+            execute_process(COMMAND sudo apt update -y)
+            execute_process(COMMAND sudo apt install -y libomp-dev)
+        elseif(EXISTS "/usr/bin/dnf")
+            execute_process(COMMAND sudo dnf install -y libomp-devel)
+        elseif(EXISTS "/usr/bin/pacman")
+            execute_process(COMMAND sudo pacman -Sy --noconfirm openmp)
+        elseif(EXISTS "/usr/bin/zypper")
+            execute_process(COMMAND sudo zypper install -y libomp-devel)
+        else()
+            message(FATAL_ERROR "Unsupported Linux distro for automatic OpenMP installation.")
+        endif()
+    endif()
+endif()
+
+# ============================
+# OpenMP detection (after any pre-install)
 # ============================
 find_package(OpenMP QUIET)
 
 if(OpenMP_CXX_FOUND)
     message(STATUS "OpenMP detected — enabling multithreading.")
     target_link_libraries(next PRIVATE OpenMP::OpenMP_CXX)
-
 else()
-    message(WARNING "OpenMP not found — attempting automatic installation (non-interactive).")
-
-    # Default to failure unless we explicitly succeed
-    set(OMP_INSTALL_RESULT 1)
-
-    if(WIN32)
-        message(STATUS "Installing OpenMP on Windows via winget (Build Tools)...")
-        execute_process(
-            COMMAND powershell -Command "winget install Microsoft.VisualStudio.2022.BuildTools --silent"
-            RESULT_VARIABLE OMP_INSTALL_RESULT
-        )
-
-    elseif(UNIX AND NOT APPLE)
-        message(STATUS "Installing OpenMP on Linux (non-interactive)...")
-
-        if(EXISTS "/usr/bin/apt")
-            execute_process(COMMAND sudo apt update -y)
-            execute_process(
-                COMMAND sudo apt install -y libomp-dev
-                RESULT_VARIABLE OMP_INSTALL_RESULT
-            )
-
-        elseif(EXISTS "/usr/bin/dnf")
-            execute_process(
-                COMMAND sudo dnf install -y libomp-devel
-                RESULT_VARIABLE OMP_INSTALL_RESULT
-            )
-
-        elseif(EXISTS "/usr/bin/pacman")
-            execute_process(
-                COMMAND sudo pacman -Sy --noconfirm openmp
-                RESULT_VARIABLE OMP_INSTALL_RESULT
-            )
-
-        elseif(EXISTS "/usr/bin/zypper")
-            execute_process(
-                COMMAND sudo zypper install -y libomp-devel
-                RESULT_VARIABLE OMP_INSTALL_RESULT
-            )
-
-        else()
-            message(FATAL_ERROR "Unsupported Linux distro for automatic OpenMP installation.")
-        endif()
-
-    else()
+    message(STATUS "OpenMP not found — building in single-threaded mode.")
+endif()
         message(FATAL_ERROR "Automatic OpenMP installation not supported on this OS.")
     endif()
 
