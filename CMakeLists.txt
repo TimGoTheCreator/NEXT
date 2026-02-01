@@ -68,7 +68,9 @@ endif()
 
 # Includes and sources
 include_directories(${CMAKE_SOURCE_DIR}/include)
+include_directories(${CMAKE_SOURCE_DIR}/src)
 file(GLOB SRC_FILES ${CMAKE_SOURCE_DIR}/src/*.cpp)
 
 # Build executable
 add_executable(next ${SRC_FILES})
+
