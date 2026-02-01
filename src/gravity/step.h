@@ -20,6 +20,7 @@ inline void Step(std::vector<Particle>& p, real dt) {
        bhForce(&root, p[i], theta, dt);
     }
 
+    #pragma omp parallel for
     for (auto& a : p) {
         a.x += a.vx * dt;
         a.y += a.vy * dt;
@@ -28,3 +29,4 @@ inline void Step(std::vector<Particle>& p, real dt) {
     
     
 }
+
