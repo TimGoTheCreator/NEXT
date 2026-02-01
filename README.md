@@ -1,6 +1,6 @@
 # NEXT - Newtonian EXact Trajectories
 
-### NEXT supports four operating modes:
+### NEXT supports six operating modes:
 FP32, FP64, SIMD32, SIMD64, AVX512_32, AVX512_64
 
 ### NEXT uses a 3D Newtonian gravity formulation with:
