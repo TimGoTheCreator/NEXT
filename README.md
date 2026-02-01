@@ -1,5 +1,8 @@
 # NEXT - Newtonian EXact Trajectories
 
+NEXT is a simulation tool written in C/C++, solving the N-Body Problem
+using the Barnes-Hut Algorithm at a time of O(N log N) 
+
 ### NEXT supports six operating modes:
 FP32, FP64, SIMD32, SIMD64, AVX512_32, AVX512_64
 
