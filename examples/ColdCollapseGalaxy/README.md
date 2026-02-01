@@ -1,5 +1,5 @@
 ### Cold Collapse Demo
-This example is a cold plummer sphere with all velocities set to 0.
+This example is a **Cold Plummer Pphere with all velocities set to 0.**
 These kind of simulations are often used for
 stress-testing a physics engine. 
 
