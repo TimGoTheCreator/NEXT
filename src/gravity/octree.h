@@ -2,11 +2,6 @@
 #include "../struct/particle.h"
 #include <vector>
 
-// Forward declaration so bhForce() can accept Octree*
-struct Octree;
-
-// Function declaration
-void bhForce(Octree* node, Particle& p, real theta, real dt);
 
 // =========================
 // Octree definition
