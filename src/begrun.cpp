@@ -2,6 +2,7 @@
 #include<iostream>
 #include<fstream>
 #include"floatdef.h"
+#include"adaptive.h"
 
 std::vector<Particle> LoadParticlesFromFile(const std::string& filename)
 {
@@ -26,20 +27,21 @@ int main(int argc, char** argv) {
     << "NN   NN  EEEEEEE  XX   XX    TTT  \n"
     << "Newtonian EXact Trajectories\n";
 
-    if (argc != 2)
+    if (argc != 3)
     {
-        std::cerr << "Usage: next <initial.txt>\n";
+        std::cerr << "Usage: next <initial.txt> <dt>\n";
         return 1;
     }
 
     const char* filename = argv[1];
+    real dt = std::stod(argv[2]);
 
     std::vector<Particle> particles = LoadParticlesFromFile(filename);
 
-    real dt = 0.01;
     while (true)
     {
-        Step(particles, dt);
+        real dtAdaptive = computeAdaptiveDt(particles, dt);
+        Step(particles, dtAdaptive);
     }
 
     return 0;
