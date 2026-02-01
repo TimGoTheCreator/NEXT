@@ -1,7 +1,9 @@
 ### Cold Collapse Demo
-This example is a plummer galaxy with all velocities set to 0, also used for stress tests. 
+This example is a cold plummer sphere with all velocities set to 0.
+These kind of simulations are often used for
+stress-testing a physics engine. 
 
-To run this example, in this directory do
+### To run this example from this directory:
 
 ```bash
 python coldcollapse.py
