@@ -3,6 +3,7 @@
 #include<fstream>
 #include"floatdef.h"
 #include"dt/adaptive.h"
+#include"io/vtk_save.h"
 
 std::vector<Particle> LoadParticlesFromFile(const std::string& filename)
 {
@@ -27,25 +28,41 @@ int main(int argc, char** argv) {
     << "NN   NN  EEEEEEE  XX   XX    TTT  \n"
     << "Newtonian EXact Trajectories\n";
 
-    if (argc != 3)
+    if (argc != 4)
     {
-        std::cerr << "Usage: next <initial.txt> <dt>\n";
+        std::cerr << "No parameter file specified\n";
+        std::cerr << "Usage: next <initial.txt> <dt> <dump_interval>\n";
         return 1;
     }
 
     const char* filename = argv[1];
     real dt = std::stod(argv[2]);
+    double cacheInterval = std::stod(argv[3]);
+    real simTime = 0;
+    real nextDump = 0;
 
     std::vector<Particle> particles = LoadParticlesFromFile(filename);
+
+    int step = 0;
 
     while (true)
     {
         real dtAdaptive = computeAdaptiveDt(particles, dt);
         Step(particles, dtAdaptive);
+        simTime += dtAdaptive;
+
+        if (simTime >= nextDump)
+        {
+            std::string out = "dump_" + std::to_string(step) + ".vtk";
+            SaveVTK(particles, out);
+            std::cout << "Wrote: " << out << "\n";
+            nextDump += cacheInterval;
+        }
+
+        step++;
     }
 
     return 0;
     
     
 }
-
