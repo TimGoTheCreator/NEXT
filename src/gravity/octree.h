@@ -1,0 +1,118 @@
+#pragma once
+#include "struct/particle.h"
+#include <vector>
+#include"floatdef.h"
+
+struct Octree {
+    real cx, cy, cz;     // center of mass
+    real m;              // total mass
+    real x, y, z;        // center of node
+    real size;           // half-width
+    bool leaf = true;
+    Particle* body = nullptr;
+    Octree* child[8] = {nullptr};
+
+    Octree(real X, real Y, real Z, real S)
+        : x(X), y(Y), z(Z), size(S), m(0), cx(0), cy(0), cz(0) {}
+
+    ~Octree() {
+        for (auto c : child) delete c;
+    }
+
+    int index(const Particle& p) const {
+        return (p.x > x) * 1 + (p.y > y) * 2 + (p.z > z) * 4;
+    }
+
+    void insert(Particle* p) {
+        if (leaf && body == nullptr) {
+            body = p;
+            return;
+        }
+
+        if (leaf) {
+            leaf = false;
+            Particle* old = body;
+            body = nullptr;
+            int idx = index(*old);
+            if (!child[idx])
+                child[idx] = createChild(idx);
+            child[idx]->insert(old);
+        }
+
+        int idx = index(*p);
+        if (!child[idx])
+            child[idx] = createChild(idx);
+        child[idx]->insert(p);
+    }
+
+    Octree* createChild(int idx) {
+        real hs = size * real(0.5);
+        return new Octree(
+            x + ((idx & 1) ? hs : -hs),
+            y + ((idx & 2) ? hs : -hs),
+            z + ((idx & 4) ? hs : -hs),
+            hs
+        );
+    }
+
+    void computeMass() {
+        if (leaf) {
+            if (body) {
+                m = body->m;
+                cx = body->x;
+                cy = body->y;
+                cz = body->z;
+            }
+            return;
+        }
+
+        m = 0;
+        cx = cy = cz = 0;
+
+        for (auto c : child) {
+            if (!c) continue;
+            c->computeMass();
+            m += c->m;
+            cx += c->cx * c->m;
+            cy += c->cy * c->m;
+            cz += c->cz * c->m;
+        }
+
+        if (m > 0) {
+            cx /= m;
+            cy /= m;
+            cz /= m;
+        }
+    }
+};
+
+inline void bhForce(const Octree* node, Particle& p, real theta, real dt)
+{
+    if (!node  node->m == 0) return;
+
+    real dx = node->cx - p.x;
+    real dy = node->cy - p.y;
+    real dz = node->cz - p.z;
+    real distSq = dx*dx + dy*dy + dz*dz + real(1e-6);
+    real dist = std::sqrt(distSq);
+
+    // Opening criterion
+    if (node->leaf  (node->size / dist) < theta) {
+        constexpr real G = real(6.67430e-11);
+        real invDist = real(1) / dist;
+        real invDist3 = invDist * invDist * invDist;
+
+        real ax = G * node->m * dx * invDist3;
+        real ay = G * node->m * dy * invDist3;
+        real az = G * node->m * dz * invDist3;
+
+        p.vx += ax * dt;
+        p.vy += ay * dt;
+        p.vz += az * dt;
+        return;
+    }
+
+    // Otherwise descend
+    for (auto c : node->child)
+        if (c) bhForce(c, p, theta, dt);
+}
