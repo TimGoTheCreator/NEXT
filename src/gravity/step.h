@@ -1,23 +1,28 @@
 #pragma once
 #include "../struct/particle.h"
 #include <vector>
+#include "octree.h"
+#include "floatdef.h"
 
 inline void Step(std::vector<Particle>& p, real dt) {
-    const size_t count = p.size();
-    for (size_t i = 0; i < count; i++)
-    {
-        for (size_t j = i + 1; j < count; j++)
-        {
-            Gravity(p[i], p[j], dt);
-        }
-        
+    Octree root(0,0,0, 1e9);
+
+    for (auto& a : p) {
+        root.insert(&a);
     }
 
-    for (size_t i = 0; i < count; i++)
-    {
-        p[i].x += p[i].vx * dt;
-        p[i].y += p[i].vy * dt;
-        p[i].z += p[i].vz * dt;
+    root.computeMass();
+
+    real theta = 0.5;
+
+    for (auto& a : p) {
+        bhForce(&root, a, theta, dt);
+    }
+
+    for (auto& a : p) {
+        a.x += a.vx * dt;
+        a.y += a.vy * dt;
+        a.z += a.vz * dt;
     }
     
     
