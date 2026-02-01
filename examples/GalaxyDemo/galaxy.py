@@ -6,5 +6,5 @@ if root not in sys.path:
 
 from tools.icbuilder import particleAdd, save, plummer
 
-plummer(1000)
+plummer(1000, 1)
 save("galaxy.txt") 
