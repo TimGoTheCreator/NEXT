@@ -90,10 +90,8 @@ struct Octree {
     }
 };
 
-// =========================
-// Barnes–Hut force function
-// =========================
-inline void bhForce(Octree* node, Particle& p, real theta, real dt)
+inline void bhAccel(Octree* node, const Particle& p, real theta,
+                    real& ax, real& ay, real& az)
 {
     if (!node || node->m == 0) return;
 
@@ -101,21 +99,24 @@ inline void bhForce(Octree* node, Particle& p, real theta, real dt)
     real dy = node->cy - p.y;
     real dz = node->cz - p.z;
 
-    real dist = sqrt(dx*dx + dy*dy + dz*dz) + 1e-6;
+    real dist2 = dx*dx + dy*dy + dz*dz + real(1e-6);
+    real dist  = std::sqrt(dist2);
 
     // Barnes–Hut acceptance criterion
     if (node->leaf || (node->size / dist) < theta) {
-        real inv = 1.0 / (dist * dist * dist);
-        real f = node->m * inv * dt;
-        p.vx += dx * f;
-        p.vy += dy * f;
-        p.vz += dz * f;
+        constexpr real G = real(6.67430e-11);
+        real inv = real(1) / (dist2 * dist); // 1 / r^3
+        real f   = G * node->m * inv;
+
+        ax += dx * f;
+        ay += dy * f;
+        az += dz * f;
         return;
     }
 
     // Otherwise recurse into children
     for (int i = 0; i < 8; i++) {
         if (node->child[i])
-            bhForce(node->child[i], p, theta, dt);
+            bhAccel(node->child[i], p, theta, ax, ay, az);
     }
 }
