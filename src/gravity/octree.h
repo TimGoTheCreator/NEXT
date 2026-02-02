@@ -93,24 +93,30 @@ struct Octree {
 inline void bhAccel(Octree* node, const Particle& p, real theta,
                     real& ax, real& ay, real& az)
 {
-    if (!node || node->m == 0) return;
+    if (!node || node->m == 0)
+        return;
+
+    // Skip self-force
+    if (node->leaf && node->body == &p)
+        return;
 
     constexpr real G   = real(6.67430e-11);
-    constexpr real eps = real(1e-6);
+
+    // IMPORTANT: use a meaningful softening for your scale
+    constexpr real eps = real(1e6);  
 
     real dx = node->cx - p.x;
     real dy = node->cy - p.y;
     real dz = node->cz - p.z;
 
-    // same softening style as Gravity(): + eps^2
     real distSq = dx*dx + dy*dy + dz*dz + eps*eps;
     real dist   = std::sqrt(distSq);
 
-    // Barnes–Hut acceptance criterion
-    // node->size is half-width → full size = 2*size
-    if (node->leaf || ( (node->size * real(2)) / dist ) < theta) {
+    // Correct Barnes–Hut acceptance criterion
+    if (node->leaf || (node->size / dist) < theta)
+    {
         real invDist  = real(1) / dist;
-        real invDist3 = invDist * invDist * invDist; // 1 / r^3
+        real invDist3 = invDist * invDist * invDist;
 
         real fac = G * node->m * invDist3;
 
@@ -120,9 +126,8 @@ inline void bhAccel(Octree* node, const Particle& p, real theta,
         return;
     }
 
-    // Otherwise recurse into children
-    for (int i = 0; i < 8; i++) {
+    // Recurse
+    for (int i = 0; i < 8; i++)
         if (node->child[i])
             bhAccel(node->child[i], p, theta, ax, ay, az);
-    }
 }
