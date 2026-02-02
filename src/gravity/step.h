@@ -28,7 +28,11 @@ inline void Step(std::vector<Particle>& p, real dt) {
         real cx = (minx + maxx) * 0.5;
         real cy = (miny + maxy) * 0.5;
         real cz = (minz + maxz) * 0.5;
-        real size = std::max({maxx-minx, maxy-miny, maxz-minz}) * 0.5;
+        real dx = maxx - minx;      
+        real dy = maxy - miny;
+        real dz = maxz - minz;
+
+        real size = std::max(dx, std::max(dy, dz)) * real(0.5);
 
         if (size <= 0) size = 1; // safety
 
