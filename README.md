@@ -39,7 +39,8 @@ python two_body.py
 ```
 
 ### NEXT Mathematics
-NEXT uses Division-avoiding algebra optimizations to make the simulation run faster. 
+NEXT uses Division-avoiding algebra optimizations to make the simulation run faster.
+NEXT also uses the KDK Leapfrog integrator to ensure accurate results. 
 
 ### NEXT Data Output
 NEXT uses the .VTK format to output data.
