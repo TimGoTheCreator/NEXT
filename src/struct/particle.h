@@ -16,9 +16,15 @@ inline void Gravity(Particle& a, Particle& b, real dt)
     real dx = b.x - a.x;
     real dy = b.y - a.y;
     real dz = b.z - a.z;
-    real eps = real(1e6);
-    real distSq = dx*dx + dy*dy + dz*dz + eps*eps;
-    real dist = std::sqrt(distSq);
+
+    real distSq0 = dx*dx + dy*dy + dz*dz;
+    real dist0   = std::sqrt(distSq0);
+
+    // adaptive softening = 1% of separation
+    real eps = dist0 * real(0.01);
+
+    real distSq = distSq0 + eps*eps;
+    real dist   = std::sqrt(distSq);
 
     real invDist = real(1) / dist;
     real invDist3 = invDist * invDist * invDist;
@@ -41,4 +47,5 @@ inline void Gravity(Particle& a, Particle& b, real dt)
     b.vy += by * dt;
     b.vz += bz * dt;
 }
+
 
