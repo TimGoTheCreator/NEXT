@@ -12,7 +12,7 @@ struct alignas(32) Particle {
 
 inline void Gravity(Particle& a, Particle& b, real dt)
 {
-    constexpr real G = real(6.67430e-11);
+    constexpr real G = real(1.0);
     real dx = b.x - a.x;
     real dy = b.y - a.y;
     real dz = b.z - a.z;
