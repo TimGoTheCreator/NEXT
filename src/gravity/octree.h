@@ -115,8 +115,8 @@ inline void bhAccel(Octree* node, const Particle& p, real theta,
     // Correct Barnes–Hut acceptance criterion
     if (node->leaf || (node->size / dist) < theta)
     {
-        real invDist  = real(1) / dist;
-        real invDist3 = invDist * invDist * invDist;
+        real invDist = std::sqrt(real(1.0) / distSq);
+real invDist3 = invDist * invDist * invDist;
 
         real fac = G * node->m * invDist3;
 
