@@ -29,7 +29,7 @@ The generator script is located in tools/icbuilder.py
 
 
 ### NEXT supports two operating modes:
-FP32, FP63
+FP32, FP64
 
 ### NEXT Multi-threading
 NEXT Uses OpenMP, with the "#pragma omp parallel for" method
