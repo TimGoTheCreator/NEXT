@@ -102,8 +102,8 @@ inline void bhAccel(Octree* node, const Particle& p, real theta,
 
     constexpr real G   = real(6.67430e-11);
 
-    // IMPORTANT: use a meaningful softening for your scale
-    constexpr real eps = real(1e6);  
+    // Adaptive softening
+    real eps = node->size * real(0.01);  
 
     real dx = node->cx - p.x;
     real dy = node->cy - p.y;
