@@ -95,22 +95,28 @@ inline void bhAccel(Octree* node, const Particle& p, real theta,
 {
     if (!node || node->m == 0) return;
 
+    constexpr real G   = real(6.67430e-11);
+    constexpr real eps = real(1e-6);
+
     real dx = node->cx - p.x;
     real dy = node->cy - p.y;
     real dz = node->cz - p.z;
 
-    real dist2 = dx*dx + dy*dy + dz*dz + real(1e-6);
-    real dist  = std::sqrt(dist2);
+    // same softening style as Gravity(): + eps^2
+    real distSq = dx*dx + dy*dy + dz*dz + eps*eps;
+    real dist   = std::sqrt(distSq);
 
     // Barnes–Hut acceptance criterion
-    if (node->leaf || (node->size / dist) < theta) {
-        constexpr real G = real(6.67430e-11);
-        real inv = real(1) / (dist2 * dist); // 1 / r^3
-        real f   = G * node->m * inv;
+    // node->size is half-width → full size = 2*size
+    if (node->leaf || ( (node->size * real(2)) / dist ) < theta) {
+        real invDist  = real(1) / dist;
+        real invDist3 = invDist * invDist * invDist; // 1 / r^3
 
-        ax += dx * f;
-        ay += dy * f;
-        az += dz * f;
+        real fac = G * node->m * invDist3;
+
+        ax += dx * fac;
+        ay += dy * fac;
+        az += dz * fac;
         return;
     }
 
