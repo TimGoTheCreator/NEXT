@@ -25,6 +25,8 @@ Supported IC types include:
 - Four‑body cross choreography
 - Random solar systems (with optional moons)
 
+The generator script is located in tools/icbuilder.py
+
 
 ### NEXT supports six operating modes:
 FP32, FP64, SIMD32, SIMD64, AVX512_32, AVX512_64
@@ -68,11 +70,9 @@ NEXT also uses the Kick-Drift-Kick Leapfrog method which is implemented like thi
 
 "
 
-Compute velocities with 0.5 of dt
-
-Compute Positions with full dt
-
-Compute velocities with 0.5 dt
+- Compute velocities with 0.5 of dt
+- Compute Positions with full dt
+- Compute velocities with 0.5 dt
 
 "
 
