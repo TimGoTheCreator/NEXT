@@ -1,6 +1,6 @@
 # IC Generator
 
-This folder contains the Python script `icgen.py` used to generate
+This folder contains the Python script `icbuild.py` used to generate
 initial conditions for NEXT. It outputs plain `.txt` files that NEXT
 can load directly.
 
