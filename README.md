@@ -8,6 +8,24 @@
 NEXT is a Multi-Threaded Simulation tool written in C/C++, solving the N-Body Problem
 using the Barnes-Hut Algorithm at a time of O(N log N) 
 
+### Initial Conditions
+NEXT includes a modular python script to generate
+initial conditions, it outputs simple
+.txt files that NEXT can load directly.
+
+Supported IC types include:
+- Plummer sphere (cold)
+- Hernquist sphere
+- Exponential disk galaxy
+- Composite galaxy (bulge + disk + halo)
+- Two‑galaxy mergers
+- Uniform sphere
+- Binary system
+- Three‑body figure‑eight choreography
+- Four‑body cross choreography
+- Random solar systems (with optional moons)
+
+
 ### NEXT supports six operating modes:
 FP32, FP64, SIMD32, SIMD64, AVX512_32, AVX512_64
 
