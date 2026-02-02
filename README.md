@@ -40,7 +40,12 @@ python two_body.py
 
 ### NEXT Mathematics
 NEXT uses Division-avoiding algebra optimizations to make the simulation run faster.
-NEXT also uses the KDK Leapfrog integrator to ensure accurate results. 
+NEXT also uses the Kick-Drift-Kick Leapfrog method which is implemented like this:
+"
+Compute velocities with 0.5 of dt
+Compute Positions with full dt
+Compute velocities with 0.5 dt
+"
 
 ### NEXT Data Output
 NEXT uses the .VTK format to output data.
