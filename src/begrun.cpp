@@ -61,7 +61,9 @@ _   _ ________   _________
             else
                 SaveVTK(particles, out);
 
-            std::cout << "Wrote: " << out << "\n";
+            std::cout << "[Dump " << step << "] "
+                      << "t = " << simTime
+                      << ", file: " << out << "\n";
 
             nextDump += args.dump_interval;
             step++;
