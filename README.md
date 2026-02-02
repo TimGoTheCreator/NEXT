@@ -1,5 +1,10 @@
 # NEXT - Newtonian EXact Trajectories
 
+![Build](https://img.shields.io/github/actions/workflow/status/YourUser/NEXT/ci.yml?branch=main)
+![License: GPL v3](https://img.shields.io/badge/License-GPLv3%2B-blue.svg)
+![C++20](https://img.shields.io/badge/C%2B%2B-20-brightgreen.svg)
+![OpenMP](https://img.shields.io/badge/OpenMP-enabled-orange.svg)
+
 NEXT is a Multi-Threaded Simulation tool written in C/C++, solving the N-Body Problem
 using the Barnes-Hut Algorithm at a time of O(N log N) 
 
