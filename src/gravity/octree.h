@@ -100,7 +100,7 @@ inline void bhAccel(Octree* node, const Particle& p, real theta,
     if (node->leaf && node->body == &p)
         return;
 
-    constexpr real G   = real(6.67430e-11);
+    constexpr real G   = real(1.0); // temporarily 1 instead of meter units for galaxies to run efficiently
 
     // Adaptive softening
     real eps = node->size * real(0.01);  
