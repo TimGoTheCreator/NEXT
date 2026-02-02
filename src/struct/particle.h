@@ -1,8 +1,6 @@
 #pragma once
-#include <immintrin.h>
-#include "floatdef.h"
 #include <cmath>
-#include <string>
+#include "floatdef.h"
 
 struct alignas(32) Particle {
     real x, y, z;
@@ -12,32 +10,29 @@ struct alignas(32) Particle {
 
 inline void Gravity(Particle& a, Particle& b, real dt)
 {
-    constexpr real G = real(1.0);
+    constexpr real G    = real(1.0);
+    constexpr real eps2 = real(1e-4);
+
+    // Relative position
     real dx = b.x - a.x;
     real dy = b.y - a.y;
     real dz = b.z - a.z;
 
-    real distSq0 = dx*dx + dy*dy + dz*dz;
-    real dist0   = std::sqrt(distSq0);
+    // Softened squared distance
+    real r2 = dx*dx + dy*dy + dz*dz + eps2;
 
-    // adaptive softening = 1% of separation
-    real eps = dist0 * real(0.01);
+    // Inverse distance and inverse distance cubed
+    real invR = std::sqrt(real(1.0) / r2);
+    real invR3 = invR * invR * invR;
 
-    real distSq = distSq0 + eps*eps;
-    real dist   = std::sqrt(distSq);
+    // Accelerations (pairwise, symmetric)
+    real ax = G * b.m * dx * invR3;
+    real ay = G * b.m * dy * invR3;
+    real az = G * b.m * dz * invR3;
 
-    real invDist = real(1) / dist;
-    real invDist3 = invDist * invDist * invDist;
-
-    real ax = G * b.m * dx * invDist3;
-    real ay = G * b.m * dy * invDist3;
-    real az = G * b.m * dz * invDist3;
-
-    real bx = -G * a.m * dx * invDist3;
-    real by = -G * a.m * dy * invDist3;
-    real bz = -G * a.m * dz * invDist3;
-
-    
+    real bx = -G * a.m * dx * invR3;
+    real by = -G * a.m * dy * invR3;
+    real bz = -G * a.m * dz * invR3;
 
     a.vx += ax * dt;
     a.vy += ay * dt;
@@ -47,5 +42,3 @@ inline void Gravity(Particle& a, Particle& b, real dt)
     b.vy += by * dt;
     b.vz += bz * dt;
 }
-
-
