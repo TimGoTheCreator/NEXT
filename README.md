@@ -1,6 +1,6 @@
 # NEXT - Newtonian EXact Trajectories
 
-![Build](https://img.shields.io/github/actions/workflow/status/YourUser/NEXT/ci.yml?branch=main)
+![Build](https://img.shields.io/github/actions/workflow/status/TimGoTheCreator/NEXT/ci.yml?branch=main)
 ![License: GPL v3](https://img.shields.io/badge/License-GPLv3%2B-blue.svg)
 ![C++20](https://img.shields.io/badge/C%2B%2B-20-brightgreen.svg)
 ![OpenMP](https://img.shields.io/badge/OpenMP-enabled-orange.svg)
