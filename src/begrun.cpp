@@ -30,7 +30,14 @@ _   _ ________   _________
 
     // Set threads and report
     omp_set_num_threads(args.threads);
-    std::cout << "Using: " << args.threads << " threads\n";
+    
+    std::cout << " Threads: " << args.threads << "\n";
+
+    #ifdef NEXT_FP64
+    std::cout << " Precision: FP64\n";
+    #elif defined(NEXT_FP32) 
+    std::cout << " Precision: FP32\n";
+    #endif
 
     // Load particles
     std::vector<Particle> particles = LoadParticlesFromFile(args.input_file);
