@@ -7,10 +7,14 @@
 #include "../argparse/argparse.hpp"
 #include <iostream>
 #include <fstream>
+#include <omp>
 
 int main(int argc, char** argv)
 {
     auto args = next::parse_arguments(argc, argv);
+
+    omp::set_num_threads(args.threads);
+    std::cout << "Using: " << args.threads << "threads/n";
 
     std::vector<Particle> particles = LoadParticlesFromFile(args.input_file);
 
