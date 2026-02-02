@@ -8,14 +8,31 @@
 #include <iostream>
 #include <fstream>
 #include <omp.h>
+#include <vector>
+#include <string>
 
 int main(int argc, char** argv)
 {
     auto args = next::parse_arguments(argc, argv);
 
-    omp_set_num_threads(args.threads);
-    std::cout << "Using: " << args.threads << "threads\n";
+    // ASCII banner (raw string literal preserves backslashes and spacing)
+    static constexpr const char* BANNER = R"NEXTBANNER(
+_   _ ________   _________ 
+| \ | |  ____\ \ / /__   __|
+|  \| | |__   \ V /   | |   
+| . ` |  __|   > <    | |   
+| |\  | |____ / . \   | |   
+|_| \_|______/_/ \_\  |_|  
+)NEXTBANNER";
 
+    // Print banner once at startup
+    std::cout << BANNER << '\n';
+
+    // Set threads and report
+    omp_set_num_threads(args.threads);
+    std::cout << "Using: " << args.threads << " threads\n";
+
+    // Load particles
     std::vector<Particle> particles = LoadParticlesFromFile(args.input_file);
 
     real simTime = 0;
