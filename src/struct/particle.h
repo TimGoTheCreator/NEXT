@@ -25,13 +25,14 @@ struct alignas(32) Particle {
 inline void Gravity(Particle& a, Particle& b, real dt)
 {
     constexpr real G = real(1.0);
-    real eps2 = pairSoftening(a.m, b.m); // must be epsilon^2
+
+    real eps = pairSoftening(a.m, b.m);
 
     real dx = b.x - a.x;
     real dy = b.y - a.y;
     real dz = b.z - a.z;
 
-    real r2 = dx*dx + dy*dy + dz*dz + eps2;
+    real r2 = dx*dx + dy*dy + dz*dz + eps*eps;
 
     real invR2 = real(1.0) / r2;
     real invR  = std::sqrt(invR2);
