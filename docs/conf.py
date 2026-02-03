@@ -9,7 +9,7 @@ extensions = [
 ]
 
 source_suffix = {
-    '.rst': 'restructuredText',
+    '.rst': 'restructuredtext',
     '.md': 'markdown', 
 }
 
