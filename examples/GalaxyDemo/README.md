@@ -9,5 +9,5 @@ Disk setups like this are useful for testing **galaxy stability**, **rotation cu
 
 ```bash
 python galaxy.py
-../../next galaxy.txt 0.01 1
+../../next galaxy.txt 8 0.01 1 vtu
 ```
