@@ -1,8 +1,11 @@
 # Running a example in NEXT
 
 To run a example in NEXT, you need to *cd* to an example path
-You aswell need a python interpeter
-For this, lets try the ColdCollapseGalaxy
+
+You also need a python interpeter
+
+For this, lets try the ColdCollapseGalaxy example
+
 ```bash
 cd examples
 cd ColdCollapseGalaxy
