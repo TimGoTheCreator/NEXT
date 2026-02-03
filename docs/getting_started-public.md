@@ -27,7 +27,7 @@ with the basic formula.
 The trick: **Barnes-Hut** instead of looking at each particle one-by-one NEXT scans the simulation and divides particles into groups
 and starts to treat them as "big stars".
 
-NEXT, however doesnt use basic Barnes-Hut; it uses **Barnes-Hut With High Ordering Multipoles**, instead of treating it like a "big star", it adds extra detail using a **dipole, quadrupole, and higher terms** into the calculation, adding shape and spread
-preserving accuracy of the engine (usually **5-7 times more stable**).
+NEXT, however doesnt use basic Barnes-Hut; it uses **Barnes-Hut With High Ordering Multipoles**, instead of treating it like a "big star", it adds extra detail using a **dipole, quadrupole, and higher terms** into the calculation, **adding shape and spread
+preserving accuracy of the engine**
 
 That means that NEXT can simulate thousands (if not millions) particles at once interacting, while still being fast!
