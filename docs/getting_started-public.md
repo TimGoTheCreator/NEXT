@@ -1,4 +1,4 @@
-# What is NEXT exactly?
+# What is NEXT (Public)
 
 NEXT is an N-Body gravity code for astrophysics and such missions.
 
