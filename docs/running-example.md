@@ -11,14 +11,15 @@ python coldcollapse.py
 ```
 
 Explaining the flags:
-../../next = Go up 2 directories (into project root) and run executable
 
-coldcollapse.txt = The name of the specified "scenario" / "initial condition"
+- ../../next = Go up 2 directories (into project root) and run executable
 
-8 = Set openmp threads to 8, if your cpu has more, you can change it
+- coldcollapse.txt = The name of the specified "scenario" / "initial condition"
 
-0.25 = Timestep, how fast the simulation will run
+- 8 = Set openmp threads to 8, if your cpu has more, you can change it
 
-0.2 = Caching interval, how fast NEXT would plot caching
+- 0.25 = Timestep, how fast the simulation will run
 
-vtu = Caching format, there is aswell vtk
+- 0.2 = Caching interval, how fast NEXT would plot caching
+
+- vtu = Caching format, there is currently vtk|vtu
