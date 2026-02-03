@@ -17,7 +17,7 @@ Explaining the flags:
 
 - ../../next = Go up 2 directories (into project root) and run executable
 
-- coldcollapse.txt = The name of the specified "scenario" / "initial condition"
+- coldcollapse.txt = The name of the specified "scenario" / "initial condition", should be from the running directory, doesn't have to be the executables
 
 - 8 = Set openmp threads to 8, if your cpu has more, you can change it
 
