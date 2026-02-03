@@ -12,7 +12,7 @@ This means that far-away groups aren't treated as just "one lump" but NEXT contr
 **Shape and Mass distribution**.
 
 In practice, this gives
-- *Much lower force errors than monopole Barnes-Hut*
+- **Much lower force errors than monopole Barnes-Hut**
 - **Better Hamiltonian system stability**
 - **Better Long-Term Stability**
 - **Cleaner Energy Preservation**
