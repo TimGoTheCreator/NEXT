@@ -7,5 +7,5 @@ stress-testing a physics engine.
 
 ```bash
 python coldcollapse.py
-../../next coldcollapse.txt 0.01 1
+../../next 8 coldcollapse.txt 0.01 0.1 vtu
 ```
