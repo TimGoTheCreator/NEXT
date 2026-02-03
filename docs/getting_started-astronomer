@@ -1,0 +1,49 @@
+# What is NEXT? 
+
+NEXT is a new simulation engine written from scratch
+NEXT uses **pure Newtonian Gravity**, 
+However, NEXT is still young so that it isn't guaranteed it'll stay that. 
+**Hydrodynamics, Dark Matter, or Radiation** might show up later. 
+
+## How does NEXT preserve stability?
+
+NEXT uses a **Barnes-Hut Octree** with **Higher-Order Multipoles** such as the following: dipole, quadrupole, etc. 
+This means that far-away groups aren't treated as just "one lump" but NEXT contributes their
+**Shape and Mass distribution**.
+
+In practice, this gives
+- *Much lower force errors than monopole Barnes-Hut*
+- **Better Hamiltonian system stability**
+- **Better Long-Term Stability**
+- **Cleaner Energy Preservation**
+- **More Reliable galaxy cluster interactions**
+
+With Higher-Order-Multipole you can also
+trade accuracy for speed:
+tighter opening angle = more accuracy
+looser opening angle = more speed. 
+
+## What can you simulate? 
+
+Anything that's mostly gravity:
+- Hamiltonian Systems
+- Star Clusters
+- Galaxy Interactions
+- Tidal Stream simulations
+- General N-Body 
+
+If you need gas, cooling, dark-matter -
+NEXT doesn't have that yet.
+
+NEXT has no weird unit systems, and it depends on the G parameter (1.0 by default) 
+
+## Stability and Integrator
+
+NEXT uses a standard **Kick-Drift-Kick Leapfrog Integrator**.
+NEXT uses the KDK leapfrog because:
+- It's simple to implement
+- It's Symplectic
+- Leapfrog is 2nd-order
+
+Stability: NEXT uses an adaptive timestep and softening the adaptive timestep can be from 1% to 100% of the one set by the user.
+The softening is calculated from how close particles are to each other. 
