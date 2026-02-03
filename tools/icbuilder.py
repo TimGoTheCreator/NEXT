@@ -331,3 +331,77 @@ def random_solar_system(
                 particles.append((mx, my, mz, mvx, mvy, mvz, mm))
 
     return particles
+
+def big_bang_ic(
+    N,
+    radius=1.0,
+    mass=1.0,
+    hubble_k=1.0,
+    center_bias=1.0,
+    perturb_amp=0.05,
+    vel_jitter=0.02
+):
+    """
+    Big-Bang-like initial conditions:
+    - Expanding sphere
+    - Small density perturbations
+    - Radial Hubble flow
+    - Isotropic velocity jitter
+    """
+
+    particles = []
+    m = mass / N
+
+    for _ in range(N):
+        # --- 1. Sample radius with optional central bias ---
+        u = random.random()
+        r = radius * (u ** (1.0 / (3.0 * center_bias)))
+
+        # Random isotropic direction
+        z = 2*random.random() - 1
+        t = 2 * math.pi * random.random()
+        s = math.sqrt(1 - z*z)
+
+        ux = s * math.cos(t)
+        uy = s * math.sin(t)
+        uz = z
+
+        # Position
+        x = r * ux
+        y = r * uy
+        z = r * uz
+
+        # --- 2. Add density perturbations ---
+        # Small random displacement to seed structure formation
+        dx = perturb_amp * radius * (random.random() - 0.5)
+        dy = perturb_amp * radius * (random.random() - 0.5)
+        dz = perturb_amp * radius * (random.random() - 0.5)
+
+        x += dx
+        y += dy
+        z += dz
+
+        # --- 3. Hubble-like expansion ---
+        v = hubble_k * r
+
+        vx = v * ux
+        vy = v * uy
+        vz = v * uz
+
+        # --- 4. Isotropic velocity jitter ---
+        # Proper spherical noise
+        jz = 2*random.random() - 1
+        jt = 2 * math.pi * random.random()
+        js = math.sqrt(1 - jz*jz)
+
+        jx = js * math.cos(jt)
+        jy = js * math.sin(jt)
+        jz = jz
+
+        vx += vel_jitter * v * jx
+        vy += vel_jitter * v * jy
+        vz += vel_jitter * v * jz
+
+        particles.append((x, y, z, vx, vy, vz, m))
+
+    return particles
