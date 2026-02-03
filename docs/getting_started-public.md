@@ -2,7 +2,7 @@
 
 NEXT is an N-Body gravity code for astrophysics and such missions.
 
-## What is Code / Astrophysics, how is it influential to NEXT?
+## Code / AstroPhysics
 
 NEXT is a Computer program made in the low-level programming language C++ designed for running on workstations
 or supercomputers that simulates forces between objects called **"Newtonian Gravity"**
