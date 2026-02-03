@@ -10,10 +10,7 @@ using the Barnes-Hut With Higher Order Multipopes Algorithm at a time of O(N log
 
 #### Preview of the figure-eight simulation in NEXT rendered with ParaView
 
-<video controls width="300">
-  <source src="https://timgothecreator.github.io/videos/f8th.mp4" type="video/mp4">
-  Your browser does not support the video tag.
-</video>
+[▶ Preview the figure-eight simulation](https://yourname.github.io/assets/figure-eight.mp4)
 
 ### Initial Conditions
 NEXT includes a modular python script to generate
