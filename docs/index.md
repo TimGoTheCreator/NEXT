@@ -10,3 +10,5 @@ Welcome to the documentation for **NEXT: Newtonian EXact Trajectories**.
 
 getting_started-public
 getting_started-astronomer
+compiling
+running-example
