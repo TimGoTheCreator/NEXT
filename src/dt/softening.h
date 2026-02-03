@@ -14,25 +14,24 @@
 #include "gravity/octree.h"
 #include "struct/particle.h"
 
+/* Softening for BarnesHut */
 inline real nextSoftening(real nodeSize,
                           real nodeMass,
                           real dist)
 {
-    // Base softening from node size (dominant term)
+    // Base softening from node size
     real eps_size = nodeSize * real(0.015);
 
-    // Mass-based softening (heavier nodes get slightly more smoothing)
+    // Mass-based softening (physical radius proxy)
     real eps_mass = std::cbrt(nodeMass) * real(0.002);
 
-    // Distance-based tapering:
-    // - strong softening at r → 0
-    // - fades out smoothly as r grows
+    // Distance taper: strong at r→0, fades smoothly
     real eps_taper = real(1.0) / (real(1.0) + dist * real(10.0));
 
-    // Combine components
+    // Combine
     real eps = (eps_size + eps_mass) * eps_taper;
 
-    // Minimum floor to avoid zero-softening singularities
+    // Minimum floor
     const real eps_min = real(1e-4);
     if (eps < eps_min)
         eps = eps_min;
@@ -40,19 +39,20 @@ inline real nextSoftening(real nodeSize,
     return eps;
 }
 
+/* Softening for Gravity kernel */
 inline real pairSoftening(real ma, real mb)
 {
-    // Mass-based softening (cubic root gives physical size scale)
+    // Physical radius proxy
     real ea = std::cbrt(ma) * real(0.002);
     real eb = std::cbrt(mb) * real(0.002);
 
-    // Symmetric combination
-    real eps2 = ea*ea + eb*eb;
+    // Symmetric combination (quadrature)
+    real eps = std::sqrt(ea*ea + eb*eb);
 
     // Minimum floor
-    const real eps_min = real(1e-6);
-    if (eps2 < eps_min)
-        eps2 = eps_min;
+    const real eps_min = real(1e-4);
+    if (eps < eps_min)
+        eps = eps_min;
 
-    return eps2;
+    return eps; // return epsilon
 }
