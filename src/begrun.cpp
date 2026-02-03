@@ -85,8 +85,9 @@ _   _ ________   _________
 
     if (std::cin.rdbuf()->in_avail() > 0) {
         std::cin >> command;
-        std::cout << "Exiting...\n";
-        if (command == 'q') break;
+        if (command == 'q' || command == 'Q')
+                std::cout << "Exiting...\n";
+                break;
     }
     
         
