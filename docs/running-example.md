@@ -19,7 +19,7 @@ Explaining the flags:
 
 - coldcollapse.txt = The name of the specified "scenario" / "initial condition"
 
-- 8 = Set openmp threads to 8, if your cpu has more, you can change it
+- 8 = Set openmp (CPU) threads to 8, if your cpu has more, you can change it
 
 - 0.25 = Timestep, how fast the simulation will run
 
