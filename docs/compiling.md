@@ -1,13 +1,16 @@
-# Compilling NEXT
+# Compiling NEXT
 
-NEXT uses a simple CMake system to build,
-To build (assuming you're in project root) you need to
+NEXT uses a simple **CMake** build system.  
+To compile (assuming you are in the project root), run:
+
+    mkdir build
+    cd build
+    cmake ..
+    cmake --build .
+    cd ..
+
+After this, you will have access to the compiled executable:
 ```bash
-mkdir build
-cd build
-cmake ..
-cmake --build .
-cd ..
+- **Linux/macOS** → `next`
+- **Windows** → `next.exe`
 ```
-
-Now, you have access to the compiled binary! (next) / (next.exe)
