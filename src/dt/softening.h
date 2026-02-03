@@ -1,5 +1,7 @@
 #pragma once
 #include <cmath>
+#include "gravity/octree.h"
+#include "struct/particle.h"
 
 inline real nextSoftening(real nodeSize,
                           real nodeMass,
