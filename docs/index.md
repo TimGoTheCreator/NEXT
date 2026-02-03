@@ -8,7 +8,9 @@ Welcome to the documentation for **NEXT: Newtonian EXact Trajectories**.
 :maxdepth: 2
 :caption: Sections
 
-getting_started
+getting_started-public
+getting_started-astronomer
+getting_started-computer-scientist
 usage
 theory
 api
