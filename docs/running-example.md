@@ -26,3 +26,5 @@ Explaining the flags:
 - 0.2 = Caching interval, how fast NEXT would plot caching
 
 - vtu = Caching format, there is currently vtk|vtu
+
+Now, you can enjoy the simulation and exit with ctrl c / q
