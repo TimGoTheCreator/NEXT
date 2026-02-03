@@ -5,3 +5,15 @@ date-released: "2026-02-03"
 authors:
   - family-names: Zakharchuk
     given-names: Timofey
+    email: timofey.zakharchuk.research@gmail.com
+    orcid: https://orcid.org/0009-0002-0385-3255
+    affiliation: "Independent researcher in computational physics"
+abstract: "NEXT is a multi‑threaded simulation tool implemented in C/C++, employing the Barnes–Hut algorithm with Higher‑Order‑Multipole expansions."
+license: "GPL-3.0-or-later"
+repository-code: "https://github.com/TimGoTheCreator/NEXT"
+keywords:
+  - simulation
+  - computational physics
+  - Barnes-Hut
+  - multipole
+  - C++
