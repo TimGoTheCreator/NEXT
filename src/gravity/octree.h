@@ -235,7 +235,7 @@ inline void bhAccel(Octree* node,
     }
 }
 
-// Barnes–Hut solver façade, nbody-style, no namespace.
+
 struct BarnesHut {
     real theta;
     real root_x, root_y, root_z;
@@ -269,7 +269,7 @@ struct BarnesHut {
     }
 
     // Compute self-gravity accelerations in-place on particles.
-    // You can adapt this to your own accel storage.
+
     void evalSelfGravity(std::vector<Particle>& particles) const {
         if (!root) return;
 
@@ -279,14 +279,13 @@ struct BarnesHut {
             real az = 0;
             bhAccel(root, p, theta, ax, ay, az);
 
-            // store back however your engine does it
             p.ax = ax;
             p.ay = ay;
             p.az = az;
         }
     }
 
-    // Single-point query, like SPH's evalAcceleration.
+
     void evalAtPoint(const Particle& probe,
                      real& ax,
                      real& ay,
