@@ -11,8 +11,6 @@
 
 #pragma once
 #include <cmath>
-#include "gravity/octree.h"
-#include "struct/particle.h"
 
 /* Softening for BarnesHut */
 inline real nextSoftening(real nodeSize,
