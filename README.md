@@ -6,7 +6,7 @@
 ![OpenMP](https://img.shields.io/badge/OpenMP-enabled-orange.svg)
 
 NEXT is a Multi-Threaded Simulation tool written in C/C++, solving the N-Body Problem
-using the Barnes-Hut Algorithm at a time of O(N log N) 
+using the Barnes-Hut Algorithm at a time of O(N log N) licensed under the GNU GPLv3+
 
 ### Initial Conditions
 NEXT includes a modular python script to generate
