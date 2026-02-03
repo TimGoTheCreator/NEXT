@@ -35,8 +35,8 @@ FP32, FP64
 NEXT Uses OpenMP with "#pragma omp parallel for" for parallelization.
 
 ### NEXT uses a 3D Newtonian gravity formulation with:
-1 reduced division count (3-6x faster on avg.) 
-2 Symmetric-force application
+- reduced division count (3-6x faster on avg.) 
+- Symmetric-force application
 
 ### NEXT particle representation and I/O
 Particles store:
@@ -77,4 +77,4 @@ More formats like HDF5 are planned.
 
 ### Media examples of NEXT
 
-▶ [Preview the figure-eight simulation](https://timgothecreator.github.io/videos/f8th.mp4)
+▶ **[Preview the figure-eight simulation](https://timgothecreator.github.io/videos/f8th.mp4)**
