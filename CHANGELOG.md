@@ -15,7 +15,7 @@ Added the following examples:
 
 ---
 
-# The first release of NEXT
+# The first release of NEXT (0.01) 
 ## Features:
 O(N²) 
 Basic simulation
