@@ -2,18 +2,18 @@
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-
 // This program is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
 #include "../struct/particle.h"
 #include <vector>
+#include <cmath>
+#include "dt/softening.h"
 
 struct Octree {
     // monopole
@@ -25,7 +25,7 @@ struct Octree {
     real size;           // half-width
     bool leaf = true;
     Particle* body = nullptr;
-    Octree* child[8] = {nullptr};
+    Octree* child[8] = { nullptr };
 
     // symmetric quadrupole tensor (6 independent components)
     real Qxx = 0, Qyy = 0, Qzz = 0;
@@ -36,11 +36,25 @@ struct Octree {
           x(X), y(Y), z(Z), size(S) {}
 
     ~Octree() {
-        for (auto c : child) delete c;
+        for (auto c : child) {
+            delete c;
+        }
     }
 
     int index(const Particle& p) const {
-        return (p.x > x) * 1 + (p.y > y) * 2 + (p.z > z) * 4;
+        return (p.x > x) * 1
+             + (p.y > y) * 2
+             + (p.z > z) * 4;
+    }
+
+    Octree* createChild(int idx) {
+        real hs = size * real(0.5);
+        return new Octree(
+            x + ((idx & 1) ? hs : -hs),
+            y + ((idx & 2) ? hs : -hs),
+            z + ((idx & 4) ? hs : -hs),
+            hs
+        );
     }
 
     void insert(Particle* p) {
@@ -54,25 +68,17 @@ struct Octree {
             Particle* old = body;
             body = nullptr;
             int idx = index(*old);
-            if (!child[idx])
+            if (!child[idx]) {
                 child[idx] = createChild(idx);
+            }
             child[idx]->insert(old);
         }
 
         int idx = index(*p);
-        if (!child[idx])
+        if (!child[idx]) {
             child[idx] = createChild(idx);
+        }
         child[idx]->insert(p);
-    }
-
-    Octree* createChild(int idx) {
-        real hs = size * real(0.5);
-        return new Octree(
-            x + ((idx & 1) ? hs : -hs),
-            y + ((idx & 2) ? hs : -hs),
-            z + ((idx & 4) ? hs : -hs),
-            hs
-        );
     }
 
     void computeMass() {
@@ -126,22 +132,26 @@ struct Octree {
             real rx = c->cx - cx;
             real ry = c->cy - cy;
             real rz = c->cz - cz;
-            real r2 = rx*rx + ry*ry + rz*rz;
+            real r2 = rx * rx + ry * ry + rz * rz;
             real mchild = c->m;
 
-            Qxx += mchild * (3*rx*rx - r2);
-            Qyy += mchild * (3*ry*ry - r2);
-            Qzz += mchild * (3*rz*rz - r2);
+            Qxx += mchild * (3 * rx * rx - r2);
+            Qyy += mchild * (3 * ry * ry - r2);
+            Qzz += mchild * (3 * rz * rz - r2);
 
-            Qxy += mchild * (3*rx*ry);
-            Qxz += mchild * (3*rx*rz);
-            Qyz += mchild * (3*ry*rz);
+            Qxy += mchild * (3 * rx * ry);
+            Qxz += mchild * (3 * rx * rz);
+            Qyz += mchild * (3 * ry * rz);
         }
     }
 };
 
-inline void bhAccel(Octree* node, const Particle& p, real theta,
-                    real& ax, real& ay, real& az)
+inline void bhAccel(Octree* node,
+                    const Particle& p,
+                    real theta,
+                    real& ax,
+                    real& ay,
+                    real& az)
 {
     if (!node || node->m == 0)
         return;
@@ -150,21 +160,20 @@ inline void bhAccel(Octree* node, const Particle& p, real theta,
     if (node->leaf && node->body == &p)
         return;
 
-    constexpr real G   = real(1.0);
+    constexpr real G = real(1.0);
 
     // Adaptive softening
-    real eps = node->size * real(0.01);
+    real eps = nextSoftening(node->size, node->m, dist);
 
     real dx = node->cx - p.x;
     real dy = node->cy - p.y;
     real dz = node->cz - p.z;
 
-    real r2_soft = dx*dx + dy*dy + dz*dz + eps*eps;
+    real r2_soft = dx * dx + dy * dy + dz * dz + eps * eps;
     real dist    = std::sqrt(r2_soft);
 
     // BH acceptance criterion
-    if (node->leaf || (node->size / dist) < theta)
-    {
+    if (node->leaf || (node->size / dist) < theta) {
         // Monopole
         real invDist  = real(1.0) / dist;
         real invDist2 = invDist * invDist;
@@ -180,7 +189,7 @@ inline void bhAccel(Octree* node, const Particle& p, real theta,
         real rx = dx;
         real ry = dy;
         real rz = dz;
-        real r2 = rx*rx + ry*ry + rz*rz + real(1e-12); // avoid zero
+        real r2 = rx * rx + ry * ry + rz * rz + real(1e-12); // avoid zero
         real r   = std::sqrt(r2);
         real invr  = real(1.0) / r;
         real invr2 = invr * invr;
@@ -219,7 +228,71 @@ inline void bhAccel(Octree* node, const Particle& p, real theta,
     }
 
     // Recurse
-    for (int i = 0; i < 8; i++)
-        if (node->child[i])
+    for (int i = 0; i < 8; ++i) {
+        if (node->child[i]) {
             bhAccel(node->child[i], p, theta, ax, ay, az);
+        }
+    }
 }
+
+// Barnes–Hut solver façade, nbody-style, no namespace.
+struct BarnesHut {
+    real theta;
+    real root_x, root_y, root_z;
+    real root_size;
+    Octree* root = nullptr;
+
+    BarnesHut(real theta_,
+              real cx,
+              real cy,
+              real cz,
+              real halfSize)
+        : theta(theta_)
+        , root_x(cx)
+        , root_y(cy)
+        , root_z(cz)
+        , root_size(halfSize) {}
+
+    ~BarnesHut() {
+        delete root;
+    }
+
+    // Build tree from particles (positions must already be set).
+    void build(std::vector<Particle>& particles) {
+        delete root;
+        root = new Octree(root_x, root_y, root_z, root_size);
+
+        for (auto& p : particles) {
+            root->insert(&p);
+        }
+        root->computeMass();
+    }
+
+    // Compute self-gravity accelerations in-place on particles.
+    // You can adapt this to your own accel storage.
+    void evalSelfGravity(std::vector<Particle>& particles) const {
+        if (!root) return;
+
+        for (auto& p : particles) {
+            real ax = 0;
+            real ay = 0;
+            real az = 0;
+            bhAccel(root, p, theta, ax, ay, az);
+
+            // store back however your engine does it
+            p.ax = ax;
+            p.ay = ay;
+            p.az = az;
+        }
+    }
+
+    // Single-point query, like SPH's evalAcceleration.
+    void evalAtPoint(const Particle& probe,
+                     real& ax,
+                     real& ay,
+                     real& az) const {
+        ax = ay = az = 0;
+        if (!root) return;
+        bhAccel(root, probe, theta, ax, ay, az);
+    }
+};
