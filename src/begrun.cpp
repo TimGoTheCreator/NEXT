@@ -58,6 +58,7 @@ _   _ ________   _________
     real simTime = 0;
     real nextDump = 0;
     int step = 0;
+    char command;
 
     while (true)
     {
@@ -81,6 +82,14 @@ _   _ ________   _________
             nextDump += args.dump_interval;
             step++;
         }
+
+    if (std::cin.rdbuf()->in_avail() > 0) {
+        std::cin >> command;
+        std::cout << "Exiting...\n";
+        if (command == 'q') break;
+    }
+    
+        
     }
 
     return 0;
