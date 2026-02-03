@@ -5,8 +5,8 @@
 ![C++20](https://img.shields.io/badge/C%2B%2B-20-brightgreen.svg)
 ![OpenMP](https://img.shields.io/badge/OpenMP-enabled-orange.svg)
 
-#### NEXT is a Multi-Threaded Simulation tool written in C/C++, solving the N-Body Problem
-#### Using the Barnes-Hut With Higher Order Multipoles Algorithm at a time of O(N log N) licensed under the GNU GPLv3+
+## NEXT is a Multi-Threaded Simulation tool written in C/C++, solving the N-Body Problem
+## Using the Barnes-Hut With Higher Order Multipoles Algorithm at a time of O(N log N) licensed under the GNU GPLv3+
 
 ### Initial Conditions
 NEXT includes a modular python script to generate
@@ -32,12 +32,11 @@ The generator script is located in tools/icbuilder.py
 FP32, FP64
 
 ### NEXT Multi-threading
-NEXT Uses OpenMP, with the "#pragma omp parallel for" method
+NEXT Uses OpenMP with "#pragma omp parallel for" for parallelization.
 
 ### NEXT uses a 3D Newtonian gravity formulation with:
-reduced division count (3-6x faster on avg.) 
-symmetric-force application
-SIMD-Friendly algebra
+1 reduced division count (3-6x faster on avg.) 
+2 Symmetric-force application
 
 ### NEXT particle representation and I/O
 Particles store:
@@ -76,6 +75,6 @@ NEXT also uses the Kick-Drift-Kick Leapfrog method which is implemented like thi
 NEXT uses the .VTK format to output data.
 More formats like HDF5 are planned. 
 
-#### Media examples of NEXT
+### Media examples of NEXT
 
 ▶ [Preview the figure-eight simulation](https://timgothecreator.github.io/videos/f8th.mp4)
