@@ -1,4 +1,4 @@
-# What is NEXT? 
+# What is NEXT? (Astronomer)
 
 NEXT is a new simulation engine written from scratch
 NEXT uses **pure Newtonian Gravity**, 
