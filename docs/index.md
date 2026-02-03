@@ -10,7 +10,6 @@ Welcome to the documentation for **NEXT: Newtonian EXact Trajectories**.
 
 getting_started-public
 getting_started-astronomer
-getting_started-computer-scientist
 usage
 theory
 api
