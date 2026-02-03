@@ -14,6 +14,7 @@
 #pragma once
 #include <cmath>
 #include "floatdef.h"
+#include "dt/softening.h"
 
 struct alignas(32) Particle {
     real x, y, z;
@@ -23,22 +24,19 @@ struct alignas(32) Particle {
 
 inline void Gravity(Particle& a, Particle& b, real dt)
 {
-    constexpr real G    = real(1.0);
-    constexpr real eps2 = real(1e-4);
+    constexpr real G = real(1.0);
+    real eps2 = pairSoftening(a.m, b.m); // must be epsilon^2
 
-    // Relative position
     real dx = b.x - a.x;
     real dy = b.y - a.y;
     real dz = b.z - a.z;
 
-    // Softened squared distance
     real r2 = dx*dx + dy*dy + dz*dz + eps2;
 
-    // Inverse distance and inverse distance cubed
-    real invR = std::sqrt(real(1.0) / r2);
-    real invR3 = invR * invR * invR;
+    real invR2 = real(1.0) / r2;
+    real invR  = std::sqrt(invR2);
+    real invR3 = invR * invR2;
 
-    // Accelerations (pairwise, symmetric)
     real ax = G * b.m * dx * invR3;
     real ay = G * b.m * dy * invR3;
     real az = G * b.m * dz * invR3;
