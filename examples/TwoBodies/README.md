@@ -7,5 +7,5 @@ One massive body is placed at the origin, and a lighter body is positioned at di
 
 ```bash
 python two_body.py
-../../next 8 two_body.txt 0.001 0.1 vtu
+../../next two_body.txt 8 0.001 0.1 vtu
 ```
