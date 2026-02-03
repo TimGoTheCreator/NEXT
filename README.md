@@ -8,6 +8,13 @@
 NEXT is a Multi-Threaded Simulation tool written in C/C++, solving the N-Body Problem
 using the Barnes-Hut With Higher Order Multipopes Algorithm at a time of O(N log N) licensed under the GNU GPLv3+
 
+#### Preview of the figure-eight simulation in NEXT rendered with ParaView
+
+<video controls width="300">
+  <source src="https://timgothecreator.github.io/videos/f8th.mp4" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
+
 ### Initial Conditions
 NEXT includes a modular python script to generate
 initial conditions, it outputs simple
