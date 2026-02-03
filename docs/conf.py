@@ -1,14 +1,17 @@
-# Configuration file for the Sphinx documentation builder.
+# Configuration file for readthedocs.
 
 project = 'NEXT'
 author = 'Timofey Zakharchuk'
 release = '2026.02.03'
 
 extensions = [
-    'sphinx.ext.autodoc',
-    'sphinx.ext.napoleon',
-    'sphinx.ext.mathjax',
+    "myst_parser", 
 ]
+
+source_suffix = {
+    '.rst': 'restructuredText',
+    '.md': 'markdown', 
+}
 
 templates_path = ['_templates']
 exclude_patterns = []
