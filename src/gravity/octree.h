@@ -146,6 +146,7 @@ struct Octree {
     }
 };
 
+
 inline void bhAccel(Octree* node,
                     const Particle& p,
                     real theta,
@@ -162,20 +163,26 @@ inline void bhAccel(Octree* node,
 
     constexpr real G = real(1.0);
 
-    // Adaptive softening
-    real eps = nextSoftening(node->size, node->m, dist);
-
+    // Geometric separation
     real dx = node->cx - p.x;
     real dy = node->cy - p.y;
     real dz = node->cz - p.z;
 
-    real r2_soft = dx * dx + dy * dy + dz * dz + eps * eps;
-    real dist    = std::sqrt(r2_soft);
+    // Physical distance (unsmoothed)
+    real r2 = dx*dx + dy*dy + dz*dz;
+    real dist = std::sqrt(r2 + real(1e-20)); // tiny floor to avoid NaN
 
-    // BH acceptance criterion
+    // Adaptive softening (returns epsilon)
+    real eps = nextSoftening(node->size, node->m, dist);
+
+    // Softened distance for force
+    real r2_soft = r2 + eps*eps;
+    real dist_soft = std::sqrt(r2_soft);
+
+    // BH acceptance criterion (use geometric distance)
     if (node->leaf || (node->size / dist) < theta) {
-        // Monopole
-        real invDist  = real(1.0) / dist;
+        // Monopole term with softened distance
+        real invDist  = real(1.0) / dist_soft;
         real invDist2 = invDist * invDist;
         real invDist3 = invDist * invDist2;
 
@@ -185,13 +192,13 @@ inline void bhAccel(Octree* node,
         real ay_m = dy * fac;
         real az_m = dz * fac;
 
-        // Quadrupole (use non-softened r^2 for shape; still approximate)
+        // Quadrupole: use geometric r (no softening) for shape
         real rx = dx;
         real ry = dy;
         real rz = dz;
-        real r2 = rx * rx + ry * ry + rz * rz + real(1e-12); // avoid zero
-        real r   = std::sqrt(r2);
-        real invr  = real(1.0) / r;
+        real r2_q = rx*rx + ry*ry + rz*rz + real(1e-12); // avoid zero
+        real r_q  = std::sqrt(r2_q);
+        real invr  = real(1.0) / r_q;
         real invr2 = invr * invr;
         real invr3 = invr * invr2;
         real invr5 = invr3 * invr2;
@@ -234,64 +241,3 @@ inline void bhAccel(Octree* node,
         }
     }
 }
-
-
-struct BarnesHut {
-    real theta;
-    real root_x, root_y, root_z;
-    real root_size;
-    Octree* root = nullptr;
-
-    BarnesHut(real theta_,
-              real cx,
-              real cy,
-              real cz,
-              real halfSize)
-        : theta(theta_)
-        , root_x(cx)
-        , root_y(cy)
-        , root_z(cz)
-        , root_size(halfSize) {}
-
-    ~BarnesHut() {
-        delete root;
-    }
-
-    // Build tree from particles (positions must already be set).
-    void build(std::vector<Particle>& particles) {
-        delete root;
-        root = new Octree(root_x, root_y, root_z, root_size);
-
-        for (auto& p : particles) {
-            root->insert(&p);
-        }
-        root->computeMass();
-    }
-
-    // Compute self-gravity accelerations in-place on particles.
-
-    void evalSelfGravity(std::vector<Particle>& particles) const {
-        if (!root) return;
-
-        for (auto& p : particles) {
-            real ax = 0;
-            real ay = 0;
-            real az = 0;
-            bhAccel(root, p, theta, ax, ay, az);
-
-            p.ax = ax;
-            p.ay = ay;
-            p.az = az;
-        }
-    }
-
-
-    void evalAtPoint(const Particle& probe,
-                     real& ax,
-                     real& ay,
-                     real& az) const {
-        ax = ay = az = 0;
-        if (!root) return;
-        bhAccel(root, probe, theta, ax, ay, az);
-    }
-};
