@@ -59,7 +59,7 @@ cd ..
 ```bash
 cd examples/TwoBodies
 python two_body.py
-../../next two_body.txt 0.1
+../../next two_body.txt 8 0.01 0.1 vtu
 ```
 
 ### NEXT Mathematics
