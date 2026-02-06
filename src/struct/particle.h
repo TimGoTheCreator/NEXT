@@ -20,6 +20,7 @@ struct alignas(32) Particle {
     real x, y, z;
     real vx, vy, vz;
     real m;
+    int type;
 };
 
 inline void Gravity(Particle& a, Particle& b, real dt)
