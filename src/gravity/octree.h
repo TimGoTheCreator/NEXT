@@ -16,129 +16,73 @@
 #include "dt/softening.h"
 
 struct Octree {
-    // monopole
-    real cx, cy, cz;     // center of mass
-    real m;              // total mass
-
-    // node geometry
-    real x, y, z;        // center of node
+    real cx, cy, cz;     // COM
+    real m;              // mass
+    real x, y, z;        // node center
     real size;           // half-width
     bool leaf = true;
     Particle* body = nullptr;
     Octree* child[8] = { nullptr };
 
-    // symmetric quadrupole tensor (6 independent components)
+    // Quadrupole tensor
     real Qxx = 0, Qyy = 0, Qzz = 0;
     real Qxy = 0, Qxz = 0, Qyz = 0;
 
-    Octree(real X, real Y, real Z, real S)
-        : cx(0), cy(0), cz(0), m(0),
-          x(X), y(Y), z(Z), size(S) {}
+    Octree(real X, real Y, real Z, real S) : x(X), y(Y), z(Z), size(S), m(0), cx(0), cy(0), cz(0) {}
 
-    ~Octree() {
-        for (auto c : child) {
-            delete c;
-        }
-    }
+    ~Octree() { for (auto c : child) delete c; }
 
     int index(const Particle& p) const {
-        return (p.x > x) * 1
-             + (p.y > y) * 2
-             + (p.z > z) * 4;
+        return (p.x > x) * 1 + (p.y > y) * 2 + (p.z > z) * 4;
     }
 
     Octree* createChild(int idx) {
         real hs = size * real(0.5);
-        return new Octree(
-            x + ((idx & 1) ? hs : -hs),
-            y + ((idx & 2) ? hs : -hs),
-            z + ((idx & 4) ? hs : -hs),
-            hs
-        );
+        return new Octree(x + ((idx & 1) ? hs : -hs), y + ((idx & 2) ? hs : -hs), z + ((idx & 4) ? hs : -hs), hs);
     }
 
     void insert(Particle* p) {
-        if (leaf && body == nullptr) {
-            body = p;
-            return;
-        }
-
+        if (leaf && body == nullptr) { body = p; return; }
         if (leaf) {
             leaf = false;
-            Particle* old = body;
-            body = nullptr;
+            Particle* old = body; body = nullptr;
             int idx = index(*old);
-            if (!child[idx]) {
-                child[idx] = createChild(idx);
-            }
+            if (!child[idx]) child[idx] = createChild(idx);
             child[idx]->insert(old);
         }
-
         int idx = index(*p);
-        if (!child[idx]) {
-            child[idx] = createChild(idx);
-        }
+        if (!child[idx]) child[idx] = createChild(idx);
         child[idx]->insert(p);
     }
 
     void computeMass() {
         if (leaf) {
-            if (body) {
-                m  = body->m;
-                cx = body->x;
-                cy = body->y;
-                cz = body->z;
-            } else {
-                m = 0;
-                cx = cy = cz = 0;
-            }
-
-            // single particle → no internal quadrupole
-            Qxx = Qyy = Qzz = 0;
-            Qxy = Qxz = Qyz = 0;
+            if (body) { m = body->m; cx = body->x; cy = body->y; cz = body->z; }
+            else { m = 0; cx = cy = cz = 0; }
+            Qxx = Qyy = Qzz = Qxy = Qxz = Qyz = 0;
             return;
         }
 
-        m = 0;
-        cx = cy = cz = 0;
-
-        // first: recurse and accumulate mass + COM
+        m = 0; cx = cy = cz = 0;
         for (auto c : child) {
             if (!c) continue;
             c->computeMass();
             if (c->m == 0) continue;
-
-            m  += c->m;
-            cx += c->cx * c->m;
-            cy += c->cy * c->m;
-            cz += c->cz * c->m;
+            m += c->m;
+            cx += c->cx * c->m; cy += c->cy * c->m; cz += c->cz * c->m;
         }
+        if (m > 0) { cx /= m; cy /= m; cz /= m; }
 
-        if (m > 0) {
-            cx /= m;
-            cy /= m;
-            cz /= m;
-        } else {
-            cx = cy = cz = 0;
-        }
-
-        // second: build quadrupole from children treated as point masses
-        Qxx = Qyy = Qzz = 0;
-        Qxy = Qxz = Qyz = 0;
-
+        Qxx = Qyy = Qzz = Qxy = Qxz = Qyz = 0;
         for (auto c : child) {
             if (!c || c->m == 0) continue;
-
-            real rx = c->cx - cx;
-            real ry = c->cy - cy;
-            real rz = c->cz - cz;
-            real r2 = rx * rx + ry * ry + rz * rz;
+            real rx = c->cx - cx; real ry = c->cy - cy; real rz = c->cz - cz;
+            // Internal node softening to match force calculation
+            real r2 = rx * rx + ry * ry + rz * rz + (size * size * real(0.01));
             real mchild = c->m;
-
             Qxx += mchild * (3 * rx * rx - r2);
             Qyy += mchild * (3 * ry * ry - r2);
             Qzz += mchild * (3 * rz * rz - r2);
-
             Qxy += mchild * (3 * rx * ry);
             Qxz += mchild * (3 * rx * rz);
             Qyz += mchild * (3 * ry * rz);
@@ -146,98 +90,43 @@ struct Octree {
     }
 };
 
-
-inline void bhAccel(Octree* node,
-                    const Particle& p,
-                    real theta,
-                    real& ax,
-                    real& ay,
-                    real& az)
-{
-    if (!node || node->m == 0)
-        return;
-
-    // Skip self-force
-    if (node->leaf && node->body == &p)
-        return;
+inline void bhAccel(Octree* node, const Particle& p, real theta, real& ax, real& ay, real& az) {
+    if (!node || node->m == 0) return;
+    if (node->leaf && node->body == &p) return;
 
     constexpr real G = real(1.0);
-
-    // Geometric separation
-    real dx = node->cx - p.x;
-    real dy = node->cy - p.y;
-    real dz = node->cz - p.z;
-
-    // Physical distance (unsmoothed)
+    real dx = node->cx - p.x; real dy = node->cy - p.y; real dz = node->cz - p.z;
     real r2 = dx*dx + dy*dy + dz*dz;
-    real dist = std::sqrt(r2 + real(1e-20)); // tiny floor to avoid NaN
+    real dist = std::sqrt(r2 + real(1e-20));
 
-    // Adaptive softening (returns epsilon)
     real eps = nextSoftening(node->size, node->m, dist);
+    if (p.type == 1) eps *= real(2.0);
 
-    // Softened distance for force
     real r2_soft = r2 + eps*eps;
     real dist_soft = std::sqrt(r2_soft);
 
-    // BH acceptance criterion (use geometric distance)
     if (node->leaf || (node->size / dist) < theta) {
-        // Monopole term with softened distance
-        real invDist  = real(1.0) / dist_soft;
-        real invDist2 = invDist * invDist;
-        real invDist3 = invDist * invDist2;
-
+        real invDist = real(1.0) / dist_soft;
+        real invDist3 = invDist * invDist * invDist;
         real fac = G * node->m * invDist3;
 
-        real ax_m = dx * fac;
-        real ay_m = dy * fac;
-        real az_m = dz * fac;
+        ax += dx * fac; ay += dy * fac; az += dz * fac;
 
-        // Quadrupole: use geometric r (no softening) for shape
-        real rx = dx;
-        real ry = dy;
-        real rz = dz;
-        real r2_q = rx*rx + ry*ry + rz*rz + real(1e-12); // avoid zero
-        real r_q  = std::sqrt(r2_q);
-        real invr  = real(1.0) / r_q;
-        real invr2 = invr * invr;
-        real invr3 = invr * invr2;
-        real invr5 = invr3 * invr2;
-        real invr7 = invr5 * invr2;
+        real invr5 = invDist3 * (invDist * invDist);
+        real invr7 = invr5 * (invDist * invDist);
 
-        // q = r_i Q_ij r_j
-        real q =
-            node->Qxx * rx * rx +
-            node->Qyy * ry * ry +
-            node->Qzz * rz * rz +
-            2 * (node->Qxy * rx * ry +
-                 node->Qxz * rx * rz +
-                 node->Qyz * ry * rz);
+        real q = node->Qxx*dx*dx + node->Qyy*dy*dy + node->Qzz*dz*dz + 
+                 2*(node->Qxy*dx*dy + node->Qxz*dx*dz + node->Qyz*dy*dz);
 
-        // ∇q = 2 Q r
-        real Qrx = 2 * (node->Qxx * rx + node->Qxy * ry + node->Qxz * rz);
-        real Qry = 2 * (node->Qxy * rx + node->Qyy * ry + node->Qyz * rz);
-        real Qrz = 2 * (node->Qxz * rx + node->Qyz * ry + node->Qzz * rz);
+        real Qrx = 2*(node->Qxx*dx + node->Qxy*dy + node->Qxz*dz);
+        real Qry = 2*(node->Qxy*dx + node->Qyy*dy + node->Qyz*dz);
+        real Qrz = 2*(node->Qxz*dx + node->Qyz*dy + node->Qzz*dz);
 
-        // ∇(r^-5) = -5 r^-7 r
-        real grad_r5_x = -5 * invr7 * rx;
-        real grad_r5_y = -5 * invr7 * ry;
-        real grad_r5_z = -5 * invr7 * rz;
-
-        // a_Q = (G/2) [ (∇q) r^-5 + q ∇(r^-5) ]
-        real ax_q = (G * real(0.5)) * (Qrx * invr5 + q * grad_r5_x);
-        real ay_q = (G * real(0.5)) * (Qry * invr5 + q * grad_r5_y);
-        real az_q = (G * real(0.5)) * (Qrz * invr5 + q * grad_r5_z);
-
-        ax += ax_m + ax_q;
-        ay += ay_m + ay_q;
-        az += az_m + az_q;
+        ax += (G * real(0.5)) * (Qrx * invr5 - 5 * q * invr7 * dx);
+        ay += (G * real(0.5)) * (Qry * invr5 - 5 * q * invr7 * dy);
+        az += (G * real(0.5)) * (Qrz * invr5 - 5 * q * invr7 * dz);
         return;
     }
 
-    // Recurse
-    for (int i = 0; i < 8; ++i) {
-        if (node->child[i]) {
-            bhAccel(node->child[i], p, theta, ax, ay, az);
-        }
-    }
+    for (auto c : node->child) if (c) bhAccel(c, p, theta, ax, ay, az);
 }
