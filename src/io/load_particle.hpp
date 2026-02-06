@@ -22,11 +22,6 @@ std::vector<Particle> LoadParticlesFromFile(const std::string& filename)
     Particle temp;
     // Match this to the file columns: x y z vx vy vz m type
     while (in >> temp.x >> temp.y >> temp.z >> temp.vx >> temp.vy >> temp.vz >> temp.m >> temp.type) {
-
-        temp.ax = 0; 
-        temp.ay = 0; 
-        temp.az = 0;
-
         p.push_back(temp);
     }
 
