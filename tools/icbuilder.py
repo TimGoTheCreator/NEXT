@@ -83,39 +83,72 @@ def diskNoDM(N, radius=10.0, mass=1.0, thickness=0.1):
 
     return particles
 
-def disk(N, radius=10.0, mass=1.0, thickness=0.1, dm_fraction=0.9):
+def disk(N_disk=1000, N_halo=2000,
+         radius=10.0, mass_disk=1.0,
+         mass_halo=5.0, thickness=0.1, halo_scale=20.0):
     """
-    Exponential disk with DM halo.
+    Exponential disk + Hernquist DM halo, with velocities.
+    - N_disk: number of disk particles
+    - N_halo: number of halo particles
+    - radius: disk scale length
+    - mass_disk: total baryonic disk mass
+    - mass_halo: total DM halo mass
+    - thickness: vertical Gaussian thickness
+    - halo_scale: Hernquist scale radius for halo
     """
-    particles = []
-    M_b = mass * (1 - dm_fraction)
-    M_dm = mass * dm_fraction
 
-    # baryonic disk
-    for _ in range(N):
+    particles = []
+
+    # --- Disk (baryons, type=0) ---
+    for _ in range(N_disk):
+        # Sample radius from exponential disk
         u = random.random()
         r = -radius * math.log(1 - u)
         phi = 2 * math.pi * random.random()
+
+        # Position
         x = r * math.cos(phi)
         y = r * math.sin(phi)
         z = random.gauss(0, thickness)
-        enclosed = M_b * (1 - math.exp(-r / radius) * (1 + r / radius))
-        v = math.sqrt(enclosed / (r + 1e-6))
+
+        # Enclosed mass: disk + halo contribution
+        M_disk_enclosed = mass_disk * (1 - math.exp(-r / radius) * (1 + r / radius))
+        M_halo_enclosed = mass_halo * (r**2 / (r + halo_scale)**2)  # Hernquist cumulative
+        M_enclosed = M_disk_enclosed + M_halo_enclosed
+
+        # Circular velocity
+        v = math.sqrt(M_enclosed / (r + 1e-6))
+
+        # Tangential velocity
         vx = -v * math.sin(phi)
         vy =  v * math.cos(phi)
-        vz = random.gauss(0, 0.05 * v)
-        particles.append((x, y, z, vx, vy, vz, M_b / N, 0))
+        vz = random.gauss(0, 0.05 * v)  # vertical dispersion
 
-    # DM halo (simple Hernquist sphere)
-    for _ in range(N):
+        particles.append((x, y, z, vx, vy, vz, mass_disk / N_disk, 0))
+
+    # --- DM Halo (type=1) ---
+    for _ in range(N_halo):
+        # Sample Hernquist radius
         u = random.random()
-        r = radius * math.sqrt(u) / (1 - math.sqrt(u))
+        r = halo_scale * math.sqrt(u) / (1 - math.sqrt(u))
         theta = math.acos(2*random.random() - 1)
         phi = 2 * math.pi * random.random()
+
+        # Position
         x = r * math.sin(theta) * math.cos(phi)
         y = r * math.sin(theta) * math.sin(phi)
         z = r * math.cos(theta)
-        particles.append((x, y, z, 0, 0, 0, M_dm / N, 1))
+
+        # Approximate isotropic velocity dispersion for Hernquist halo
+        # sigma^2 ~ GM(r)/(2r)
+        M_halo_enclosed = mass_halo * (r**2 / (r + halo_scale)**2)
+        sigma = math.sqrt(M_halo_enclosed / (2 * (r + 1e-6)))
+
+        vx = random.gauss(0, sigma)
+        vy = random.gauss(0, sigma)
+        vz = random.gauss(0, sigma)
+
+        particles.append((x, y, z, vx, vy, vz, mass_halo / N_halo, 1))
 
     return particles
 
