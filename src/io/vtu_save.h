@@ -35,50 +35,42 @@ inline void SaveVTU(const std::vector<Particle>& p, const std::string& filename)
     out << "        <DataArray type=\"Float32\" NumberOfComponents=\"3\" format=\"ascii\">\n          ";
     for (const auto& a : p)
         out << a.x << " " << a.y << " " << a.z << " ";
-    out << "\n        </DataArray>\n";
-    out << "      </Points>\n";
+    out << "\n        </DataArray>\n      </Points>\n";
 
     // --- CELLS ---
     out << "      <Cells>\n";
-
-    // connectivity
     out << "        <DataArray type=\"Int32\" Name=\"connectivity\" format=\"ascii\">\n          ";
-    for (size_t i = 0; i < N; i++)
-        out << i << " ";
+    for (size_t i = 0; i < N; i++) out << i << " ";
     out << "\n        </DataArray>\n";
 
-    // offsets
     out << "        <DataArray type=\"Int32\" Name=\"offsets\" format=\"ascii\">\n          ";
-    for (size_t i = 1; i <= N; i++)
-        out << i << " ";
+    for (size_t i = 1; i <= N; i++) out << i << " ";
     out << "\n        </DataArray>\n";
 
-    // types (1 = VTK_VERTEX)
     out << "        <DataArray type=\"UInt8\" Name=\"types\" format=\"ascii\">\n          ";
-    for (size_t i = 0; i < N; i++)
-        out << "1 ";
-    out << "\n        </DataArray>\n";
-
-    out << "      </Cells>\n";
+    for (size_t i = 0; i < N; i++) out << "1 "; // 1 = VTK_VERTEX
+    out << "\n        </DataArray>\n      </Cells>\n";
 
     // --- POINT DATA ---
     out << "      <PointData>\n";
 
-    // velocity vector
+    // Dark Matter Type (0 = Star, 1 = DM)
+    out << "        <DataArray type=\"Int32\" Name=\"type\" format=\"ascii\">\n          ";
+    for (const auto& a : p)
+        out << a.type << " ";
+    out << "\n        </DataArray>\n";
+
+    // Velocity
     out << "        <DataArray type=\"Float32\" Name=\"velocity\" NumberOfComponents=\"3\" format=\"ascii\">\n          ";
     for (const auto& a : p)
         out << a.vx << " " << a.vy << " " << a.vz << " ";
     out << "\n        </DataArray>\n";
 
-    // mass scalar
+    // Mass
     out << "        <DataArray type=\"Float32\" Name=\"mass\" format=\"ascii\">\n          ";
     for (const auto& a : p)
         out << a.m << " ";
     out << "\n        </DataArray>\n";
 
-    out << "      </PointData>\n";
-
-    out << "    </Piece>\n";
-    out << "  </UnstructuredGrid>\n";
-    out << "</VTKFile>\n";
+    out << "      </PointData>\n    </Piece>\n  </UnstructuredGrid>\n</VTKFile>\n";
 }
