@@ -32,22 +32,31 @@ inline void SaveVTK(const std::vector<Particle>& p, const std::string& filename)
     constexpr const char* vtkType = "float";
     #endif
 
-    // draw points
+    // Points
     out << "POINTS " << N << " " << vtkType << "\n";
     for (const auto& a : p)
         out << a.x << " " << a.y << " " << a.z << "\n";
 
-    // draw vertices
+    // Vertices
     out << "VERTICES " << N << " " << N*2 << "\n";
     for (size_t i = 0; i < N; i++)
         out << "1 " << i << "\n";
 
-    // that too
     out << "POINT_DATA " << N << "\n";
+
+    // Type (0 for Star, 1 for DM)
+    // In ParaView, use the "Threshold" filter on this to hide DM
+    out << "SCALARS type int 1\n";
+    out << "LOOKUP_TABLE default\n";
+    for (const auto& a : p)
+        out << a.type << "\n";
+
+    // Velocity Vectors
     out << "VECTORS velocity " << vtkType << "\n";
     for (const auto& a : p)
         out << a.vx << " " << a.vy << " " << a.vz << "\n";
 
+    // Mass
     out << "SCALARS mass " << vtkType << " 1\n";
     out << "LOOKUP_TABLE default\n";
     for (const auto& a : p)
