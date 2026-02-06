@@ -41,7 +41,7 @@ def coldPlummer(N, scale=1.0, mass=1.0, dm_fraction=0.9):
 
     return particles
 
-def disk(N, radius=10.0, mass=1.0, thickness=0.1):
+def diskNoDM(N, radius=10.0, mass=1.0, thickness=0.1):
     """
     Generates a simple equilibrium-ish exponential disk galaxy.
     - N: number of particles
