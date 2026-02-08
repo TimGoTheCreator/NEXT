@@ -14,6 +14,7 @@
 #include <vector>
 #include <cmath>
 #include "dt/softening.h"
+#include "floatdef.h"
 
 struct Octree {
     real cx, cy, cz;     // COM
