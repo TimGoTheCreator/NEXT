@@ -13,7 +13,10 @@
 
 #include "struct/particle.h"
 #include "floatdef.h"
-#include <ifstream>
+#include <fstream>
+#include <string>
+#include <vector>
+
 
 std::vector<Particle> LoadParticlesFromFile(const std::string& filename)
 {
