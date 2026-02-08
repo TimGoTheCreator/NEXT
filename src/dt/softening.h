@@ -11,6 +11,7 @@
 
 #pragma once
 #include <cmath>
+#include "floatdef.h"
 
 /* Softening for BarnesHut */
 inline real nextSoftening(real nodeSize,
