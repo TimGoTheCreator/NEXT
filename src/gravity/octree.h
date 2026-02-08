@@ -100,7 +100,9 @@ inline void bhAccel(Octree* node, const Particle& p, real theta, real& ax, real&
     real dist = std::sqrt(r2 + real(1e-20));
 
     real eps = nextSoftening(node->size, node->m, dist);
-    if (p.type == 1) eps *= real(2.0);
+    if (p.type == 1) {
+        eps = std::max(eps, 2.0 * node->size / std::pow(node->m / p.m, 1.0/3));
+    }
 
     real r2_soft = r2 + eps*eps;
     real dist_soft = std::sqrt(r2_soft);
