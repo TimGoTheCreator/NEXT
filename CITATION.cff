@@ -1,7 +1,7 @@
 cff-version: 1.2.0
 title: "NEXT: Newtonian EXact Trajectories"
-version: "2026.02.03"
-date-released: "2026-02-03"
+version: "2026.02.08"
+date-released: "2026-02-08"
 authors:
   - family-names: Zakharchuk
     given-names: Timofey
