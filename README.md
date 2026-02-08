@@ -13,18 +13,6 @@ NEXT includes a modular python script to generate
 initial conditions, it outputs simple
 .txt files that NEXT can load directly.
 
-Supported IC types include:
-- Plummer sphere (cold)
-- Hernquist sphere
-- Exponential disk galaxy
-- Composite galaxy (bulge + disk + halo)
-- Two‑galaxy mergers
-- Uniform sphere
-- Binary system
-- Three‑body figure‑eight choreography
-- Four‑body cross choreography
-- Random solar systems (with optional moons)
-
 The generator script is located in tools/icbuilder.py
 
 
