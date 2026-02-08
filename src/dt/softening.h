@@ -11,47 +11,42 @@
 
 #pragma once
 #include <cmath>
-#include "floatdef.h"
 
 /* Softening for BarnesHut */
-inline real nextSoftening(real nodeSize,
-                          real nodeMass,
-                          real dist)
-{
-    // Base softening from node size
-    real eps_size = nodeSize * real(0.015);
+inline real nextSoftening(real nodeSize, real nodeMass, real dist) {
+  // Base softening from node size
+  real eps_size = nodeSize * real(0.015);
 
-    // Mass-based softening (physical radius proxy)
-    real eps_mass = std::cbrt(nodeMass) * real(0.002);
+  // Mass-based softening (physical radius proxy)
+  real eps_mass = std::cbrt(nodeMass) * real(0.002);
 
-    // Distance taper: strong at r→0, fades smoothly
-    real eps_taper = real(1.0) / (real(1.0) + dist * real(10.0));
+  // Distance taper: strong at r→0, fades smoothly
+  real eps_taper = real(1.0) / (real(1.0) + dist * real(10.0));
 
-    // Combine
-    real eps = (eps_size + eps_mass) * eps_taper;
+  // Combine
+  real eps = (eps_size + eps_mass) * eps_taper;
 
-    // Minimum floor
-    const real eps_min = real(1e-4);
-    if (eps < eps_min)
-        eps = eps_min;
+  // Minimum floor
+  const real eps_min = real(1e-4);
+  if (eps < eps_min)
+    eps = eps_min;
 
-    return eps;
+  return eps;
 }
 
 /* Softening for Gravity kernel */
-inline real pairSoftening(real ma, real mb)
-{
-    // Physical radius proxy
-    real ea = std::cbrt(ma) * real(0.002);
-    real eb = std::cbrt(mb) * real(0.002);
+inline real pairSoftening(real ma, real mb) {
+  // Physical radius proxy
+  real ea = std::cbrt(ma) * real(0.002);
+  real eb = std::cbrt(mb) * real(0.002);
 
-    // Symmetric combination (quadrature)
-    real eps = std::sqrt(ea*ea + eb*eb);
+  // Symmetric combination (quadrature)
+  real eps = std::sqrt(ea * ea + eb * eb);
 
-    // Minimum floor
-    const real eps_min = real(1e-4);
-    if (eps < eps_min)
-        eps = eps_min;
+  // Minimum floor
+  const real eps_min = real(1e-4);
+  if (eps < eps_min)
+    eps = eps_min;
 
-    return eps; // return epsilon
+  return eps; // return epsilon
 }
