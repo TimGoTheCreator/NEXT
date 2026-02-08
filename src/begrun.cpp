@@ -2,34 +2,31 @@
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-
 // This program is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "gravity/step.h"
-#include "floatdef.h"
+#include "../argparse/argparse.hpp"
 #include "dt/adaptive.h"
+#include "floatdef.h"
+#include "gravity/step.h"
+#include "io/load_particle.hpp"
 #include "io/vtk_save.h"
 #include "io/vtu_save.h"
-#include "io/load_particle.hpp"
-#include "../argparse/argparse.hpp"
-#include <iostream>
 #include <fstream>
+#include <iostream>
 #include <omp.h>
-#include <vector>
 #include <string>
+#include <vector>
 
-int main(int argc, char** argv)
-{
-    auto args = next::parse_arguments(argc, argv);
+int main(int argc, char **argv) {
+  auto args = next::parse_arguments(argc, argv);
 
-    // ASCII banner (raw string literal preserves backslashes and spacing)
-    static constexpr const char* BANNER = R"NEXTBANNER(
+  // ASCII banner (raw string literal preserves backslashes and spacing)
+  static constexpr const char *BANNER = R"NEXTBANNER(
 _   _ ________   _________ 
 | \ | |  ____\ \ / /__   __|
 |  \| | |__   \ V /   | |   
@@ -38,60 +35,56 @@ _   _ ________   _________
 |_| \_|______/_/ \_\  |_|  
 )NEXTBANNER";
 
-    // Print banner once at startup
-    std::cout << BANNER << '\n';
+  // Print banner once at startup
+  std::cout << BANNER << '\n';
 
-    // Set threads and report
-    omp_set_num_threads(args.threads);
-    
-    std::cout << " Threads: " << args.threads << "\n";
+  // Set threads and report
+  omp_set_num_threads(args.threads);
 
-    #ifdef NEXT_FP64
-    std::cout << " Precision: FP64\n";
-    #elif defined(NEXT_FP32) 
-    std::cout << " Precision: FP32\n";
-    #endif
+  std::cout << " Threads: " << args.threads << "\n";
 
-    // Load particles
-    std::vector<Particle> particles = LoadParticlesFromFile(args.input_file);
+#ifdef NEXT_FP64
+  std::cout << " Precision: FP64\n";
+#elif defined(NEXT_FP32)
+  std::cout << " Precision: FP32\n";
+#endif
 
-    real simTime = 0;
-    real nextDump = 0;
-    int step = 0;
-    char command;
+  // Load particles
+  std::vector<Particle> particles = LoadParticlesFromFile(args.input_file);
 
-    while (true)
-    {
-        real dtAdaptive = computeAdaptiveDt(particles, args.dt);
-        Step(particles, dtAdaptive);
-        simTime += dtAdaptive;
+  real simTime = 0;
+  real nextDump = 0;
+  int step = 0;
+  char command;
 
-        if (simTime >= nextDump)
-        {
-            std::string out = "dump_" + std::to_string(step) + (args.use_vtu ? ".vtu" : ".vtk");
+  while (true) {
+    real dtAdaptive = computeAdaptiveDt(particles, args.dt);
+    Step(particles, dtAdaptive);
+    simTime += dtAdaptive;
 
-            if (args.use_vtu)
-                SaveVTU(particles, out);
-            else
-                SaveVTK(particles, out);
+    if (simTime >= nextDump) {
+      std::string out =
+          "dump_" + std::to_string(step) + (args.use_vtu ? ".vtu" : ".vtk");
 
-            std::cout << "[Dump " << step << "] "
-                      << "t = " << simTime
-                      << ", file: " << out << "\n";
+      if (args.use_vtu)
+        SaveVTU(particles, out);
+      else
+        SaveVTK(particles, out);
 
-            nextDump += args.dump_interval;
-            step++;
-        }
+      std::cout << "[Dump " << step << "] " << "t = " << simTime
+                << ", file: " << out << "\n";
+
+      nextDump += args.dump_interval;
+      step++;
+    }
 
     if (std::cin.rdbuf()->in_avail() > 0) {
-        std::cin >> command;
-        if (command == 'q' || command == 'Q')
-                std::cout << "Exiting...\n";
-                break;
+      std::cin >> command;
+      if (command == 'q' || command == 'Q')
+        std::cout << "Exiting...\n";
+      break;
     }
-    
-        
-    }
+  }
 
-    return 0;
+  return 0;
 }
