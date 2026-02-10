@@ -55,6 +55,8 @@ file(GLOB ARGPARSE_FILES ${CMAKE_SOURCE_DIR}/argparse/*.cpp)
 
 add_executable(next ${SRC_FILES} ${ARGPARSE_FILES})
 
+find_package(OpenMP QUIET) 
+
 if(OpenMP_CXX_FOUND)
     message(STATUS "OpenMP detected — enabling multithreading.")
     target_link_libraries(next PRIVATE OpenMP::OpenMP_CXX)
