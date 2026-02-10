@@ -55,35 +55,6 @@ file(GLOB ARGPARSE_FILES ${CMAKE_SOURCE_DIR}/argparse/*.cpp)
 
 add_executable(next ${SRC_FILES} ${ARGPARSE_FILES})
 
-# ============================
-# Pre-install OpenMP if needed (Clang/Linux)
-# ============================
-if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND UNIX AND NOT APPLE)
-    if(NOT EXISTS "/usr/lib/llvm-18/lib/libomp.so"
-       AND NOT EXISTS "/usr/lib/x86_64-linux-gnu/libomp.so"
-       AND NOT EXISTS "/usr/lib/libomp.so")
-        message(STATUS "Clang detected — installing OpenMP before configuration...")
-
-        if(EXISTS "/usr/bin/apt")
-            execute_process(COMMAND sudo apt update -y)
-            execute_process(COMMAND sudo apt install -y libomp-dev)
-        elseif(EXISTS "/usr/bin/dnf")
-            execute_process(COMMAND sudo dnf install -y libomp-devel)
-        elseif(EXISTS "/usr/bin/pacman")
-            execute_process(COMMAND sudo pacman -Sy --noconfirm openmp)
-        elseif(EXISTS "/usr/bin/zypper")
-            execute_process(COMMAND sudo zypper install -y libomp-devel)
-        else()
-            message(FATAL_ERROR "Unsupported Linux distro for automatic OpenMP installation.")
-        endif()
-    endif()
-endif()
-
-# ============================
-# OpenMP detection (after any pre-install)
-# ============================
-find_package(OpenMP QUIET)
-
 if(OpenMP_CXX_FOUND)
     message(STATUS "OpenMP detected — enabling multithreading.")
     target_link_libraries(next PRIVATE OpenMP::OpenMP_CXX)
