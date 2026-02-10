@@ -63,6 +63,9 @@ NEXT also uses the Kick-Drift-Kick Leapfrog method which is implemented like thi
 NEXT uses the .VTK format to output data.
 More formats like HDF5 are planned. 
 
+### Notes
+NEXT outputs the final binary next to CMakeLists.txt file and not the /build directory. 
+
 ### Media examples of NEXT
 
 ▶ **[Preview the figure-eight simulation](https://timgothecreator.github.io/videos/f8th.mp4)**
