@@ -34,7 +34,7 @@ cmake --build . --config Release
 cd ..
 ```
 
-This produces the `next` executable in the build directory.
+This produces the `next` executable in the root directory. 
 
 ---
 
@@ -43,7 +43,7 @@ This produces the `next` executable in the build directory.
 ```bash
 cd examples/TwoBodies
 python two_body.py
-../../build/next two_body.txt 8 0.01 0.1 vtu
+../../next two_body.txt 8 0.01 0.1 vtu
 ```
 
 **Arguments explained:**
