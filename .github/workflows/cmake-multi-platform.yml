@@ -15,19 +15,30 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
         build_type: [Release]
         c_compiler: [gcc, clang, cl]
         include:
+          # Windows
           - os: windows-latest
             c_compiler: cl
             cpp_compiler: cl
+
+          # Ubuntu GCC
           - os: ubuntu-latest
             c_compiler: gcc
             cpp_compiler: g++
+
+          # Ubuntu Clang
           - os: ubuntu-latest
             c_compiler: clang
             cpp_compiler: clang++
+
+          # macOS (use Homebrew LLVM for OpenMP support)
+          - os: macos-latest
+            c_compiler: clang
+            cpp_compiler: clang++
+
         exclude:
           - os: windows-latest
             c_compiler: gcc
@@ -35,31 +46,77 @@ jobs:
             c_compiler: clang
           - os: ubuntu-latest
             c_compiler: cl
+          - os: macos-latest
+            c_compiler: gcc
+          - os: macos-latest
+            c_compiler: cl
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install OpenMP (Ubuntu only)
+      # ------------------------
+      # Linux OpenMP
+      # ------------------------
+      - name: Install OpenMP (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
-        run: sudo apt-get update && sudo apt-get install -y libomp-dev
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libomp-dev
 
+      # ------------------------
+      # macOS OpenMP
+      # ------------------------
+      - name: Install OpenMP + LLVM (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew update
+          brew install llvm libomp
+
+      # ------------------------
+      # Set reusable strings
+      # ------------------------
       - name: Set reusable strings
         id: strings
         shell: bash
         run: |
           echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
 
-      - name: Configure CMake
+      # ------------------------
+      # Configure CMake
+      # ------------------------
+      - name: Configure CMake (macOS)
+        if: matrix.os == 'macos-latest'
         run: >
           cmake -B ${{ steps.strings.outputs.build-output-dir }}
+          -S ${{ github.workspace }}
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          -DCMAKE_C_COMPILER=/opt/homebrew/opt/llvm/bin/clang
+          -DCMAKE_CXX_COMPILER=/opt/homebrew/opt/llvm/bin/clang++
+          -DCMAKE_PREFIX_PATH=/opt/homebrew/opt/llvm
+          -DOpenMP_C_FLAGS="-Xpreprocessor -fopenmp"
+          -DOpenMP_CXX_FLAGS="-Xpreprocessor -fopenmp"
+          -DOpenMP_C_LIB_NAMES="omp"
+          -DOpenMP_CXX_LIB_NAMES="omp"
+          -DOpenMP_omp_LIBRARY=/opt/homebrew/opt/libomp/lib/libomp.dylib
+
+      - name: Configure CMake (Others)
+        if: matrix.os != 'macos-latest'
+        run: >
+          cmake -B ${{ steps.strings.outputs.build-output-dir }}
+          -S ${{ github.workspace }}
           -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
           -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-          -S ${{ github.workspace }}
 
+      # ------------------------
+      # Build
+      # ------------------------
       - name: Build
         run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
 
+      # ------------------------
+      # Test
+      # ------------------------
       - name: Test
         working-directory: ${{ steps.strings.outputs.build-output-dir }}
         run: ctest --build-config ${{ matrix.build_type }}
