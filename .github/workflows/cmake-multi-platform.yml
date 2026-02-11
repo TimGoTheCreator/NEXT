@@ -8,6 +8,16 @@ on:
   pull_request:
     branches: [ "main" ]
 
+name: CMake on multiple platforms
+
+on:
+  push:
+    branches:
+      - main
+      - adaptiveDt
+  pull_request:
+    branches: [ "main" ]
+
 jobs:
   build:
     runs-on: ${{ matrix.os }}
