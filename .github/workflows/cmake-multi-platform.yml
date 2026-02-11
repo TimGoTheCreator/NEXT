@@ -15,22 +15,39 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-20.04, ubuntu-22.04, ubuntu-24.04, windows-latest, macos-latest]
         build_type: [Release]
         c_compiler: [gcc, clang, cl]
         include:
-          # Windows
+          # Windows MSVC
           - os: windows-latest
             c_compiler: cl
             cpp_compiler: cl
 
+          # Windows GCC (MinGW) — just for fun
+          - os: windows-latest
+            c_compiler: gcc
+            cpp_compiler: g++
+
           # Ubuntu GCC
-          - os: ubuntu-latest
+          - os: ubuntu-20.04
+            c_compiler: gcc
+            cpp_compiler: g++
+          - os: ubuntu-22.04
+            c_compiler: gcc
+            cpp_compiler: g++
+          - os: ubuntu-24.04
             c_compiler: gcc
             cpp_compiler: g++
 
           # Ubuntu Clang
-          - os: ubuntu-latest
+          - os: ubuntu-20.04
+            c_compiler: clang
+            cpp_compiler: clang++
+          - os: ubuntu-22.04
+            c_compiler: clang
+            cpp_compiler: clang++
+          - os: ubuntu-24.04
             c_compiler: clang
             cpp_compiler: clang++
 
@@ -41,15 +58,18 @@ jobs:
 
         exclude:
           - os: windows-latest
-            c_compiler: gcc
-          - os: windows-latest
             c_compiler: clang
-          - os: ubuntu-latest
+          - os: ubuntu-20.04
+            c_compiler: cl
+          - os: ubuntu-22.04
+            c_compiler: cl
+          - os: ubuntu-24.04
             c_compiler: cl
           - os: macos-latest
             c_compiler: gcc
           - os: macos-latest
             c_compiler: cl
+
 
     steps:
       - uses: actions/checkout@v4
