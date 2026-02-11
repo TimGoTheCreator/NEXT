@@ -24,7 +24,7 @@ jobs:
             c_compiler: cl
             cpp_compiler: cl
 
-          # Windows GCC (MinGW) — just for fun
+          # Windows GCC (MinGW)
           - os: windows-latest
             c_compiler: gcc
             cpp_compiler: g++
@@ -51,7 +51,7 @@ jobs:
             c_compiler: clang
             cpp_compiler: clang++
 
-          # macOS (use Homebrew LLVM for OpenMP support)
+          # macOS (Homebrew LLVM for OpenMP)
           - os: macos-latest
             c_compiler: clang
             cpp_compiler: clang++
@@ -70,27 +70,29 @@ jobs:
           - os: macos-latest
             c_compiler: cl
 
-
     steps:
       - uses: actions/checkout@v4
 
       # ------------------------
-      # Linux OpenMP
+      # Install OpenMP everywhere
       # ------------------------
       - name: Install OpenMP (Ubuntu)
-        if: matrix.os == 'ubuntu-latest'
+        if: startsWith(matrix.os, 'ubuntu')
         run: |
           sudo apt-get update
           sudo apt-get install -y libomp-dev
 
-      # ------------------------
-      # macOS OpenMP
-      # ------------------------
       - name: Install OpenMP + LLVM (macOS)
         if: matrix.os == 'macos-latest'
         run: |
           brew update
           brew install llvm libomp
+
+      - name: Install MinGW with OpenMP (Windows GCC)
+        if: matrix.os == 'windows-latest' && matrix.c_compiler == 'gcc'
+        run: |
+          choco install mingw -y
+          # MinGW-w64 includes OpenMP headers/libraries
 
       # ------------------------
       # Set reusable strings
