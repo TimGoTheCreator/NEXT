@@ -10,6 +10,7 @@ This quickstart shows how to build and run a minimal simulation using the **NEXT
 - CMake (≥ 3.10)
 - C++ compiler (Clang, GCC, or MSVC)
 - Python 3 (for example input generation)
+- OpenMP (for Multi-Threadding)
 
 ---
 
