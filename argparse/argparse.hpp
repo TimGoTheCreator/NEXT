@@ -3,6 +3,12 @@
 
 namespace next {
 
+enum class OutputFormat {
+    VTK,
+    VTU,
+    HDF5
+};
+
 struct Arguments {
     std::string input_file;
     int threads;
