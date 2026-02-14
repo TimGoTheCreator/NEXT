@@ -10,8 +10,8 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
-#include "dt/softening.h"
 #include "floatdef.h"
+#include "dt/softening.h"
 #include <cmath>
 
 struct alignas(32) Particle {
