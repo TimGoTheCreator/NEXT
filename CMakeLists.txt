@@ -55,11 +55,27 @@ file(GLOB ARGPARSE_FILES ${CMAKE_SOURCE_DIR}/argparse/*.cpp)
 
 add_executable(next ${SRC_FILES} ${ARGPARSE_FILES})
 
+# ============================
+# OpenMP
+# ============================
 find_package(OpenMP QUIET) 
-
 if(OpenMP_CXX_FOUND)
     message(STATUS "OpenMP detected — enabling multithreading.")
     target_link_libraries(next PRIVATE OpenMP::OpenMP_CXX)
 else()
     message(STATUS "OpenMP not found — building in single-threaded mode.")
 endif()
+
+# ============================
+# HDF5 (raw C API)
+# ============================
+find_package(HDF5 REQUIRED COMPONENTS C HL)
+
+if(HDF5_FOUND)
+    message(STATUS "HDF5 detected — enabling snapshot loader.")
+    include_directories(${HDF5_INCLUDE_DIRS})
+    target_link_libraries(next PRIVATE ${HDF5_LIBRARIES})
+else()
+    message(FATAL_ERROR "HDF5 not found — please install libhdf5-dev or equivalent.")
+endif()
+
