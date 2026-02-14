@@ -1,0 +1,29 @@
+name: FreeBSD CI
+
+on:
+  push:
+    branches: [ main, adaptiveDt ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  freebsd:
+    name: FreeBSD 14.3 Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build & Test on FreeBSD
+        uses: vmactions/freebsd-vm@v1
+        with:
+          release: "14.3"
+          prepare: |
+            pkg update -f
+            pkg install -y llvm cmake gmake hdf5
+          run: |
+            export CC=clang
+            export CXX=clang++
+            cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
+            cmake --build build -- -j$(sysctl -n hw.ncpu)
+            cd build && ctest --output-on-failure
