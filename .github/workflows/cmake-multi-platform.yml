@@ -62,30 +62,35 @@ jobs:
           - os: macos-latest
             c_compiler: cl
 
-
     steps:
       - uses: actions/checkout@v4
 
       # ------------------------
-      # Install OpenMP everywhere
+      # Install OpenMP + HDF5
       # ------------------------
-      - name: Install OpenMP (Ubuntu)
+      - name: Install OpenMP + HDF5 (Ubuntu)
         if: startsWith(matrix.os, 'ubuntu')
         run: |
           sudo apt-get update
-          sudo apt-get install -y libomp-dev
+          sudo apt-get install -y libomp-dev libhdf5-dev
 
-      - name: Install OpenMP + LLVM (macOS)
+      - name: Install OpenMP + HDF5 (macOS)
         if: matrix.os == 'macos-latest'
         run: |
           brew update
-          brew install llvm libomp
+          brew install llvm libomp hdf5
 
-      - name: Install MinGW with OpenMP (Windows GCC)
+      - name: Install MinGW with OpenMP + HDF5 (Windows GCC)
         if: matrix.os == 'windows-latest' && matrix.c_compiler == 'gcc'
         run: |
           choco install mingw -y
-          # MinGW-w64 includes OpenMP headers/libraries
+          choco install hdf5 -y || echo "HDF5 via Chocolatey may not exist; use vcpkg fallback"
+          vcpkg install hdf5
+
+      - name: Install HDF5 (Windows MSVC)
+        if: matrix.os == 'windows-latest' && matrix.c_compiler == 'cl'
+        run: |
+          vcpkg install hdf5
 
       # ------------------------
       # Set reusable strings
@@ -107,7 +112,7 @@ jobs:
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
           -DCMAKE_C_COMPILER=/opt/homebrew/opt/llvm/bin/clang
           -DCMAKE_CXX_COMPILER=/opt/homebrew/opt/llvm/bin/clang++
-          -DCMAKE_PREFIX_PATH=/opt/homebrew/opt/llvm
+          -DCMAKE_PREFIX_PATH="/opt/homebrew/opt/llvm;/opt/homebrew/opt/hdf5"
           -DOpenMP_C_FLAGS="-Xpreprocessor -fopenmp"
           -DOpenMP_CXX_FLAGS="-Xpreprocessor -fopenmp"
           -DOpenMP_C_LIB_NAMES="omp"
@@ -144,4 +149,3 @@ jobs:
         with:
           name: next-${{ matrix.os }}-${{ matrix.c_compiler }}
           path: ${{ github.workspace }}/next*
-
