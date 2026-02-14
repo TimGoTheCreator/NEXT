@@ -118,13 +118,13 @@ jobs:
       - name: Configure CMake (Windows MinGW)
         if: matrix.os == 'windows-latest' && matrix.c_compiler == 'gcc'
         shell: bash
-        run: >
-          cmake -G "MinGW Makefiles"
-          -B ${{ steps.strings.outputs.build-output-dir }}
-          -S ${{ github.workspace }}
-          -DCMAKE_C_COMPILER=gcc
-          -DCMAKE_CXX_COMPILER=g++
-          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+        run: |
+          cmake -G "MinGW Makefiles" \
+            -B "${{ github.workspace }}/build" \
+            -S "${{ github.workspace }}" \
+            -DCMAKE_C_COMPILER=gcc \
+            -DCMAKE_CXX_COMPILER=g++ \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
 
       - name: Configure CMake (Windows MSVC)
         if: matrix.os == 'windows-latest' && matrix.c_compiler == 'cl'
