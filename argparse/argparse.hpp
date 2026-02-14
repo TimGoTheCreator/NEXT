@@ -14,7 +14,7 @@ struct Arguments {
     int threads;
     double dt;
     double dump_interval;
-    bool use_vtu;
+    OutputFormat format;
 };
 
 Arguments parse_arguments(int argc, char** argv);
