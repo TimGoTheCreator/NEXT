@@ -68,6 +68,7 @@ jobs:
       # ------------------------
       # Install OpenMP + HDF5
       # ------------------------
+
       - name: Install OpenMP + HDF5 (Ubuntu)
         if: startsWith(matrix.os, 'ubuntu')
         run: |
@@ -80,13 +81,21 @@ jobs:
           brew update
           brew install llvm libomp hdf5
 
-      - name: Install MinGW with OpenMP + HDF5 (Windows GCC)
+      # ------------------------
+      # FIXED: Proper MinGW HDF5 install
+      # ------------------------
+      - name: Install MinGW + HDF5 (Windows GCC)
         if: matrix.os == 'windows-latest' && matrix.c_compiler == 'gcc'
+        shell: bash
         run: |
-          choco install mingw -y
-          choco install hdf5 -y || echo "HDF5 via Chocolatey may not exist; use vcpkg fallback"
-          vcpkg install hdf5
+          choco install msys2 -y
+          C:/tools/msys64/usr/bin/pacman -Syu --noconfirm
+          C:/tools/msys64/usr/bin/pacman -S --noconfirm mingw-w64-x86_64-hdf5
+          echo "Using MSYS2 MinGW HDF5"
 
+      # ------------------------
+      # MSVC stays the same
+      # ------------------------
       - name: Install HDF5 (Windows MSVC)
         if: matrix.os == 'windows-latest' && matrix.c_compiler == 'cl'
         run: |
