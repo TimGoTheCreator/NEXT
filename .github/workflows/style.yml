@@ -1,5 +1,8 @@
 name: Auto Format C++ (Google Style)
 
+permissions:
+  contents: write
+
 on:
   push:
     branches: [ main ]
@@ -17,7 +20,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # required for pushing commits
+          fetch-depth: 0
 
       - name: Install clang-format
         run: |
@@ -40,4 +43,4 @@ jobs:
         with:
           commit_message: "style: auto-format C++ sources (Google, 80 cols)"
           branch: ${{ github.ref }}
-          file_pattern: "*.cpp *.h *.hpp"
+          file_pattern: "**/*.cpp **/*.h **/*.hpp"
