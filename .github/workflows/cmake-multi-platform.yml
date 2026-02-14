@@ -90,7 +90,7 @@ jobs:
       - name: Install HDF5 (Windows MSVC)
         if: matrix.os == 'windows-latest' && matrix.c_compiler == 'cl'
         run: |
-          vcpkg install hdf5
+          vcpkg install hdf5[hl]
 
       # ------------------------
       # Set build directory
@@ -133,7 +133,7 @@ jobs:
           -B ${{ steps.strings.outputs.build-output-dir }}
           -S ${{ github.workspace }}
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-          -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
+          -DCMAKE_TOOLCHAIN_FILE=D:/vcpkg/scripts/buildsystems/vcpkg.cmake
 
       - name: Configure CMake (Linux)
         if: startsWith(matrix.os, 'ubuntu')
