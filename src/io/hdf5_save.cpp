@@ -2,6 +2,7 @@
 #include <hdf5.h>
 #include <vector>
 #include <string>
+#include <fstream>
 
 void SaveHDF5(const std::vector<Particle>& p, const std::string& filename)
 {
