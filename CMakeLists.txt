@@ -66,6 +66,11 @@ else()
     message(STATUS "OpenMP not found — building in single-threaded mode.")
 endif()
 
+if (WIN32 AND MSVC AND DEFINED ENV{HDF5_DIR})
+    set(HDF5_ROOT "$ENV{HDF5_DIR}")
+    set(CMAKE_PREFIX_PATH "${HDF5_ROOT};${CMAKE_PREFIX_PATH}")
+endif()
+
 # ============================
 # HDF5 (raw C API)
 # ============================
