@@ -66,7 +66,6 @@ jobs:
       # ------------------------
       # Install dependencies
       # ------------------------
-
       - name: Install OpenMP + HDF5 (Ubuntu)
         if: startsWith(matrix.os, 'ubuntu')
         run: |
@@ -87,10 +86,13 @@ jobs:
           C:/tools/msys64/usr/bin/pacman -Syu --noconfirm
           C:/tools/msys64/usr/bin/pacman -S --noconfirm mingw-w64-x86_64-hdf5
 
-      - name: Install HDF5 (Windows MSVC)
+      - name: Install vcpkg + HDF5 (Windows MSVC)
         if: matrix.os == 'windows-latest' && matrix.c_compiler == 'cl'
+        shell: powershell
         run: |
-          vcpkg install hdf5[hl]
+          git clone https://github.com/microsoft/vcpkg.git C:/vcpkg
+          C:/vcpkg/bootstrap-vcpkg.bat
+          C:/vcpkg/vcpkg install hdf5[hl]:x64-windows
 
       # ------------------------
       # Set build directory
@@ -104,7 +106,6 @@ jobs:
       # ------------------------
       # Configure CMake
       # ------------------------
-
       - name: Configure CMake (macOS)
         if: matrix.os == 'macos-latest'
         run: >
@@ -129,11 +130,11 @@ jobs:
       - name: Configure CMake (Windows MSVC)
         if: matrix.os == 'windows-latest' && matrix.c_compiler == 'cl'
         run: >
-          cmake -G "Visual Studio 17 2022"
+          cmake -G "Visual Studio 17 2022" -A x64
           -B ${{ steps.strings.outputs.build-output-dir }}
           -S ${{ github.workspace }}
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-          -DCMAKE_TOOLCHAIN_FILE=D:/vcpkg/scripts/buildsystems/vcpkg.cmake
+          -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
 
       - name: Configure CMake (Linux)
         if: startsWith(matrix.os, 'ubuntu')
