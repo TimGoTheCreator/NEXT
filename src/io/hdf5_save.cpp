@@ -57,4 +57,46 @@ void SaveHDF5(const std::vector<Particle>& p, const std::string& filename)
     H5Sclose(space1);
     H5Gclose(group);
     H5Fclose(file);
+
+        // ===============================
+    // Write XDMF sidecar for ParaView
+    // ===============================
+    std::string xdmf = filename.substr(0, filename.find_last_of('.')) + ".xdmf";
+    std::ofstream xmf(xdmf);
+
+    xmf << "<?xml version=\"1.0\" ?>\n";
+    xmf << "<Xdmf Version=\"3.0\">\n";
+    xmf << "  <Domain>\n";
+    xmf << "    <Grid Name=\"Particles\" GridType=\"Uniform\">\n";
+    xmf << "      <Topology TopologyType=\"Polyvertex\" NumberOfElements=\"" << N << "\"/>\n";
+    xmf << "      <Geometry GeometryType=\"XYZ\">\n";
+    xmf << "        <DataItem Dimensions=\"" << N << " 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+    xmf << "          " << filename << ":/PartType1/Coordinates\n";
+    xmf << "        </DataItem>\n";
+    xmf << "      </Geometry>\n";
+
+    xmf << "      <Attribute Name=\"Velocity\" AttributeType=\"Vector\" Center=\"Node\">\n";
+    xmf << "        <DataItem Dimensions=\"" << N << " 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+    xmf << "          " << filename << ":/PartType1/Velocities\n";
+    xmf << "        </DataItem>\n";
+    xmf << "      </Attribute>\n";
+
+    xmf << "      <Attribute Name=\"Mass\" AttributeType=\"Scalar\" Center=\"Node\">\n";
+    xmf << "        <DataItem Dimensions=\"" << N << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+    xmf << "          " << filename << ":/PartType1/Masses\n";
+    xmf << "        </DataItem>\n";
+    xmf << "      </Attribute>\n";
+
+    xmf << "      <Attribute Name=\"ID\" AttributeType=\"Scalar\" Center=\"Node\">\n";
+    xmf << "        <DataItem Dimensions=\"" << N << "\" NumberType=\"Int\" Precision=\"4\" Format=\"HDF\">\n";
+    xmf << "          " << filename << ":/PartType1/ParticleIDs\n";
+    xmf << "        </DataItem>\n";
+    xmf << "      </Attribute>\n";
+
+    xmf << "    </Grid>\n";
+    xmf << "  </Domain>\n";
+    xmf << "</Xdmf>\n";
+
+    xmf.close();
+
 }
