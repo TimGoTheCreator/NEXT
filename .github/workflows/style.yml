@@ -1,0 +1,43 @@
+name: Auto Format C++ (Google Style)
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - "**/*.cpp"
+      - "**/*.h"
+      - "**/*.hpp"
+      - ".clang-format"
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # required for pushing commits
+
+      - name: Install clang-format
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format
+
+      - name: Create Google style config if missing
+        run: |
+          if [ ! -f .clang-format ]; then
+            echo "BasedOnStyle: Google" > .clang-format
+            echo "ColumnLimit: 80" >> .clang-format
+          fi
+
+      - name: Run clang-format on C++ files
+        run: |
+          find . -regex '.*\.\(cpp\|hpp\|h\)$' -exec clang-format -i {} \;
+
+      - name: Auto-commit formatted files
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "style: auto-format C++ sources (Google, 80 cols)"
+          branch: ${{ github.ref }}
+          file_pattern: "*.cpp *.h *.hpp"
