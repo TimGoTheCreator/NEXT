@@ -8,6 +8,10 @@ on:
     branches: [ main ]
   pull_request:
 
+concurrency:
+  group: clang-tidy-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   clang-tidy:
     runs-on: ubuntu-latest
@@ -16,10 +20,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install clang-tidy
+      - name: Install dependencies (clang-tidy + HDF5)
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang-tidy
+          sudo apt-get install -y clang-tidy libhdf5-dev
 
       - name: Configure project (CMake)
         run: |
@@ -31,4 +35,7 @@ jobs:
 
       - name: Run clang-tidy
         run: |
-          clang-tidy $(find . -name "*.cpp") -- -I./include -std=c++20
+          clang-tidy $(find . -name "*.cpp") -- \
+            -I./include \
+            -Ibuild \
+            -std=c++20
