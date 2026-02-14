@@ -143,4 +143,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: next-${{ matrix.os }}-${{ matrix.c_compiler }}
-          path: ${{ steps.strings.outputs.build-output-dir }}/next*
+          path: ${{ github.workspace }}/next*
+
