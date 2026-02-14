@@ -1,5 +1,3 @@
-# INSTALL_Linux.md
-
 # 🐧 Building NEXT on Linux (Ubuntu)
 
 ## Prerequisites
