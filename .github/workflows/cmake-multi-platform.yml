@@ -135,3 +135,12 @@ jobs:
       - name: Test
         working-directory: ${{ steps.strings.outputs.build-output-dir }}
         run: ctest --build-config ${{ matrix.build_type }}
+
+      # ------------------------
+      # Upload build artifacts
+      # ------------------------
+      - name: Upload binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: next-${{ matrix.os }}-${{ matrix.c_compiler }}
+          path: ${{ steps.strings.outputs.build-output-dir }}/next*
