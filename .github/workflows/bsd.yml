@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [ main ]
 
+concurrency:
+  group: clang-tidy-${{ github.ref }}
+  cancel-in-progress: true
+
+
 jobs:
   freebsd:
     name: FreeBSD ${{ matrix.version }} Build
