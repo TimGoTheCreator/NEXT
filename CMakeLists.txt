@@ -3,6 +3,17 @@ cmake_minimum_required(VERSION 3.10)
 project(NEXT)
 
 # ============================
+# Detect compiler environment
+# ============================
+if (MINGW)
+    message(STATUS "Detected MinGW GCC — using MinGW settings")
+    set(USING_MINGW TRUE)
+elseif (MSVC)
+    message(STATUS "Detected MSVC — using MSVC settings")
+    set(USING_MSVC TRUE)
+endif()
+
+# ============================
 # Output directories
 # ============================
 set(CMAKE_BINARY_DIR ${CMAKE_SOURCE_DIR}/build)
@@ -66,21 +77,24 @@ else()
     message(STATUS "OpenMP not found — building in single-threaded mode.")
 endif()
 
-if (WIN32 AND MSVC AND DEFINED ENV{HDF5_DIR})
+# ============================
+# HDF5 detection
+# ============================
+
+# MSVC: use vcpkg or prebuilt binaries
+if (USING_MSVC AND DEFINED ENV{HDF5_DIR})
     set(HDF5_ROOT "$ENV{HDF5_DIR}")
     set(CMAKE_PREFIX_PATH "${HDF5_ROOT};${CMAKE_PREFIX_PATH}")
 endif()
 
-# ============================
-# HDF5 (raw C API)
-# ============================
+if (USING_MINGW)
+    # MSYS2 MinGW installs HDF5 here
+    set(CMAKE_PREFIX_PATH "C:/tools/msys64/mingw64")
+    message(STATUS "Using MSYS2 MinGW HDF5 path: ${CMAKE_PREFIX_PATH}")
+endif()
+
 find_package(HDF5 REQUIRED COMPONENTS C HL)
 
-if(HDF5_FOUND)
-    message(STATUS "HDF5 detected — enabling snapshot loader.")
-    include_directories(${HDF5_INCLUDE_DIRS})
-    target_link_libraries(next PRIVATE ${HDF5_LIBRARIES})
-else()
-    message(FATAL_ERROR "HDF5 not found — please install libhdf5-dev or equivalent.")
-endif()
+include_directories(${HDF5_INCLUDE_DIRS})
+target_link_libraries(next PRIVATE ${HDF5_LIBRARIES})
 
