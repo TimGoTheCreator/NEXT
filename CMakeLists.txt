@@ -14,19 +14,17 @@ elseif (MSVC)
 endif()
 
 # ============================
-# Output directories
-# ============================
-set(CMAKE_BINARY_DIR ${CMAKE_SOURCE_DIR}/build)
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR})
-
-# ============================
-# Precision options (scalar only)
+# Options
 # ============================
 option(NEXT_FP32 "Use 32-bit floats (scalar)" OFF)
 option(NEXT_FP64 "Use 64-bit floats (scalar)" ON)
 
+# Option: copy final executable to source dir
+option(NEXT_COPY_TO_CMAKE_SOURCE_DIR "Copy final executable from build dir to source dir" ON)
+
+# ============================
+# Precision modes
+# ============================
 set(NEXT_MODES
     NEXT_FP32
     NEXT_FP64
@@ -47,9 +45,7 @@ elseif(NEXT_MODE_COUNT GREATER 1)
     message(FATAL_ERROR "Enable only one precision mode.")
 endif()
 
-# ============================
 # Apply compile definitions
-# ============================
 if(NEXT_FP32)
     add_compile_definitions(NEXT_FP32)
 elseif(NEXT_FP64)
@@ -69,7 +65,7 @@ add_executable(next ${SRC_FILES} ${ARGPARSE_FILES})
 # ============================
 # OpenMP
 # ============================
-find_package(OpenMP QUIET) 
+find_package(OpenMP QUIET)
 if(OpenMP_CXX_FOUND)
     message(STATUS "OpenMP detected — enabling multithreading.")
     target_link_libraries(next PRIVATE OpenMP::OpenMP_CXX)
@@ -80,7 +76,6 @@ endif()
 # ============================
 # HDF5 detection
 # ============================
-
 # MSVC: use vcpkg or prebuilt binaries
 if (USING_MSVC AND DEFINED ENV{HDF5_DIR})
     set(HDF5_ROOT "$ENV{HDF5_DIR}")
@@ -98,3 +93,14 @@ find_package(HDF5 REQUIRED COMPONENTS C HL)
 include_directories(${HDF5_INCLUDE_DIRS})
 target_link_libraries(next PRIVATE ${HDF5_LIBRARIES})
 
+# ============================
+# Optional: Copy executable to source dir
+# ============================
+if(NEXT_COPY_TO_CMAKE_SOURCE_DIR)
+    add_custom_command(TARGET next POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+                $<TARGET_FILE:next>
+                ${CMAKE_SOURCE_DIR}/$<TARGET_FILE_NAME:next>
+        COMMENT "Copying executable to CMake source directory"
+    )
+endif()
