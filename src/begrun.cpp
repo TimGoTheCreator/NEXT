@@ -16,11 +16,14 @@
 #include "io/load_particle.hpp"
 #include "io/vtk_save.h"
 #include "io/vtu_save.h"
+#include "io/hdf5_save.h"
 #include <fstream>
 #include <iostream>
 #include <omp.h>
 #include <string>
 #include <vector>
+
+using next::OutputFormat;
 
 int main(int argc, char **argv) {
   auto args = next::parse_arguments(argc, argv);
@@ -62,21 +65,33 @@ _   _ ________   _________
     Step(particles, dtAdaptive);
     simTime += dtAdaptive;
 
-    if (simTime >= nextDump) {
-      std::string out =
-          "dump_" + std::to_string(step) + (args.use_vtu ? ".vtu" : ".vtk");
+        if (simTime >= nextDump) {
+            std::string out = "dump_" + std::to_string(step);
 
-      if (args.use_vtu)
-        SaveVTU(particles, out);
-      else
-        SaveVTK(particles, out);
+            switch (args.format) {
+                case OutputFormat::VTK:
+                    out += ".vtk";
+                    SaveVTK(particles, out);
+                    break;
 
-      std::cout << "[Dump " << step << "] " << "t = " << simTime
-                << ", file: " << out << "\n";
+                case OutputFormat::VTU:
+                    out += ".vtu";
+                    SaveVTU(particles, out);
+                    break;
 
-      nextDump += args.dump_interval;
-      step++;
-    }
+                case OutputFormat::HDF5:
+                    out += ".hdf5";
+                    SaveHDF5(particles, out);
+                    break;
+            }
+
+            std::cout << "[Dump " << step << "] t = " << simTime
+                      << ", file: " << out << "\n";
+
+            nextDump += args.dump_interval;
+            step++;
+        }
+
 
     if (std::cin.rdbuf()->in_avail() > 0) {
       std::cin >> command;
