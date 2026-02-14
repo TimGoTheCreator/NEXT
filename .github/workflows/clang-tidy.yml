@@ -20,10 +20,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install dependencies (clang-tidy + HDF5)
+      - name: Install dependencies (clang-tidy + HDF5 + OpenMP)
         run: |
           sudo apt-get update
           sudo apt-get install -y clang-tidy libhdf5-dev
+          sudo apt-get install -y libomp-dev
 
       - name: Configure project (CMake)
         run: |
