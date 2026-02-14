@@ -7,12 +7,10 @@ on:
   push:
     branches: [ main ]
   pull_request:
-  
+
 concurrency:
   group: clang-tidy-${{ github.ref }}
   cancel-in-progress: true
-
-
 
 jobs:
   clang-tidy:
@@ -29,15 +27,14 @@ jobs:
 
       - name: Configure project (CMake)
         run: |
-          cmake -S . -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+          cmake -S . -B build \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+            -DNEXT_FP64=ON
 
       - name: Build project
         run: |
           cmake --build build -- -j$(nproc)
 
-      - name: Run clang-tidy
+      - name: Run clang-tidy using compile_commands.json
         run: |
-          clang-tidy $(find . -name "*.cpp") -- \
-            -I./include \
-            -Ibuild \
-            -std=c++20
+          find src -name "*.cpp" | xargs -I{} clang-tidy {} -p build
