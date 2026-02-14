@@ -20,8 +20,10 @@ cd NEXT
 
 2. **Install dependencies using Homebrew**
 
+```bash
 brew update
 brew install llvm libomp hdf5 python
+```
 
 3. **Build NEXT**
 
