@@ -7,9 +7,8 @@ on:
     branches: [ main ]
 
 concurrency:
-  group: next-ci-${{ github.ref }}
+  group: freebsd-ci-${{ github.ref }}
   cancel-in-progress: true
-
 
 
 jobs:
