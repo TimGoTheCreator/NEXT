@@ -9,7 +9,7 @@ on:
     paths-ignore: '**/.md'
 
 concurrency:
-  group: next-ci-${{ github.ref }}
+  group: multiplatform-ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
