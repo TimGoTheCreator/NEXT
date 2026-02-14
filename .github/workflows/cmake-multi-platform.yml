@@ -9,7 +9,7 @@ on:
     paths-ignore: '**/.md'
 
 concurrency:
-  group: clang-tidy-${{ github.ref }}
+  group: next-ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
