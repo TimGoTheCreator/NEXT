@@ -12,7 +12,7 @@
 #pragma once
 #include "floatdef.h"
 #include "octree.h"
-#include "particle.h"
+#include "struct/particle.h"
 #include <memory>
 #include <algorithm>
 #include <omp.h>
