@@ -45,7 +45,6 @@ int main(int argc, char **argv) {
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
-    log_once(rank, "MPI mode enabled (" + std::to_string(size) + " ranks)");
 #endif
 
     H5Eset_auto(H5E_DEFAULT, nullptr, nullptr);
@@ -63,17 +62,25 @@ int main(int argc, char **argv) {
 
     omp_set_num_threads(args.threads);
 
-    log_once(rank, BANNER);
-    log_once(rank, " Threads:   " + std::to_string(args.threads));
-#ifdef NEXT_FP64
-    log_once(rank, " Precision: FP64");
-#elif defined(NEXT_FP32)
-    log_once(rank, " Precision: FP32");
+    // Only rank 0 prints startup info
+    if (rank == 0 && omp_get_thread_num() == 0) {
+#ifdef NEXT_MPI
+        std::cout << "MPI mode enabled (" << size << " ranks)" << std::endl;
 #endif
+        std::cout << BANNER << std::endl;
+        std::cout << " Threads:   " << args.threads << std::endl;
+#ifdef NEXT_FP64
+        std::cout << " Precision: FP64" << std::endl;
+#elif defined(NEXT_FP32)
+        std::cout << " Precision: FP32" << std::endl;
+#endif
+    }
 
     // Load particles
     Particle particles = LoadParticlesFromFile(args.input_file);
-    log_once(rank, " Particles: " + std::to_string(particles.size()));
+    if (rank == 0 && omp_get_thread_num() == 0) {
+        std::cout << " Particles: " << particles.size() << std::endl;
+    }
 
     real simTime = 0;
     real nextDump = 0;
@@ -94,9 +101,10 @@ int main(int argc, char **argv) {
                 case OutputFormat::HDF5: out += ".hdf5"; SaveHDF5(particles, out); break;
             }
 
-            log_once(rank, "[Dump " + std::to_string(step) +
-                           "] t = " + std::to_string(simTime) +
-                           ", file: " + out);
+            if (rank == 0 && omp_get_thread_num() == 0) {
+                std::cout << "[Dump " << step << "] t = " << simTime
+                          << ", file: " << out << std::endl;
+            }
 
             nextDump += args.dump_interval;
             step++;
@@ -106,7 +114,9 @@ int main(int argc, char **argv) {
         if (std::cin.rdbuf()->in_avail() > 0) {
             std::cin >> command;
             if (command == 'q' || command == 'Q') {
-                log_once(rank, "Exiting...");
+                if (rank == 0 && omp_get_thread_num() == 0) {
+                    std::cout << "Exiting..." << std::endl;
+                }
                 break;
             }
         }
