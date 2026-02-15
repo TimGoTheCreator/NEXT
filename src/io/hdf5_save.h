@@ -1,6 +1,5 @@
 #pragma once
-#include <vector>
-#include "struct/particle.h"
 #include <string>
+#include "../struct/particle.h"
 
-void SaveHDF5(const std::vector<Particle>& p, const std::string& filename);
+void SaveHDF5(const ParticleSystem& ps, const std::string& filename);
