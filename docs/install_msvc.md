@@ -8,6 +8,7 @@
 - vcpkg
 - HDF5 (installed via vcpkg)
 - Python 3
+- LLVM OpenMP Component (C++ Clang-cl for v143 build tools (x64/x86)
 
 ## Steps
 
