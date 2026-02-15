@@ -65,7 +65,7 @@ add_executable(next ${SRC_FILES} ${ARGPARSE_FILES})
 # ============================
 # Vectorization reports
 # ============================
-option(ENABLE_VEC_REPORT "Enable compiler vectorization reports" ON)
+option(ENABLE_VEC_REPORT "Enable compiler vectorization reports" OFF)
 
 if(ENABLE_VEC_REPORT)
     if(CMAKE_CXX_COMPILER_ID MATCHES "IntelLLVM")
