@@ -13,6 +13,7 @@
 #include "../struct/particle.h"
 #include <vector>
 #include <cmath>
+#include <memory> // Required for unique_ptr
 #include "dt/softening.h"
 #include "floatdef.h"
 
@@ -22,8 +23,10 @@ struct Octree {
     real x, y, z;        // node center
     real size;           // half-width
     bool leaf = true;
-    Particle* body = nullptr;
-    Octree* child[8] = { nullptr };
+    Particle* body = nullptr; 
+    
+    // Ownership: unique_ptr handles memory automatically
+    std::unique_ptr<Octree> child[8] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
 
     // Quadrupole tensor
     real Qxx = 0, Qyy = 0, Qzz = 0;
@@ -31,26 +34,39 @@ struct Octree {
 
     Octree(real X, real Y, real Z, real S) : x(X), y(Y), z(Z), size(S), m(0), cx(0), cy(0), cz(0) {}
 
-    ~Octree() { for (auto c : child) delete c; }
+    // Destructor is now empty; unique_ptr cleans up children automatically
+    ~Octree() = default;
 
     int index(const Particle& p) const {
         return (p.x > x) * 1 + (p.y > y) * 2 + (p.z > z) * 4;
     }
 
-    Octree* createChild(int idx) {
+    // Returns unique_ptr to take ownership
+    std::unique_ptr<Octree> createChild(int idx) {
         real hs = size * real(0.5);
-        return new Octree(x + ((idx & 1) ? hs : -hs), y + ((idx & 2) ? hs : -hs), z + ((idx & 4) ? hs : -hs), hs);
+        return std::make_unique<Octree>(
+            x + ((idx & 1) ? hs : -hs), 
+            y + ((idx & 2) ? hs : -hs), 
+            z + ((idx & 4) ? hs : -hs), 
+            hs
+        );
     }
 
     void insert(Particle* p) {
-        if (leaf && body == nullptr) { body = p; return; }
+        if (leaf && body == nullptr) { 
+            body = p; 
+            return; 
+        }
+        
         if (leaf) {
             leaf = false;
-            Particle* old = body; body = nullptr;
+            Particle* old = body; 
+            body = nullptr;
             int idx = index(*old);
             if (!child[idx]) child[idx] = createChild(idx);
             child[idx]->insert(old);
         }
+        
         int idx = index(*p);
         if (!child[idx]) child[idx] = createChild(idx);
         child[idx]->insert(p);
@@ -65,7 +81,7 @@ struct Octree {
         }
 
         m = 0; cx = cy = cz = 0;
-        for (auto c : child) {
+        for (auto& c : child) { // Use reference to unique_ptr
             if (!c) continue;
             c->computeMass();
             if (c->m == 0) continue;
@@ -75,10 +91,9 @@ struct Octree {
         if (m > 0) { cx /= m; cy /= m; cz /= m; }
 
         Qxx = Qyy = Qzz = Qxy = Qxz = Qyz = 0;
-        for (auto c : child) {
+        for (auto& c : child) {
             if (!c || c->m == 0) continue;
             real rx = c->cx - cx; real ry = c->cy - cy; real rz = c->cz - cz;
-            // Internal node softening to match force calculation
             real r2 = rx * rx + ry * ry + rz * rz + (size * size * real(0.01));
             real mchild = c->m;
             Qxx += mchild * (3 * rx * rx - r2);
@@ -91,6 +106,7 @@ struct Octree {
     }
 };
 
+// Traverse using raw pointers (non-owning observer)
 inline void bhAccel(Octree* node, const Particle& p, real theta, real& ax, real& ay, real& az) {
     if (!node || node->m == 0) return;
     if (node->leaf && node->body == &p) return;
@@ -131,5 +147,7 @@ inline void bhAccel(Octree* node, const Particle& p, real theta, real& ax, real&
         return;
     }
 
-    for (auto c : node->child) if (c) bhAccel(c, p, theta, ax, ay, az);
+    for (auto& c : node->child) {
+        if (c) bhAccel(c.get(), p, theta, ax, ay, az); // Use .get() to pass raw pointer
+    }
 }
