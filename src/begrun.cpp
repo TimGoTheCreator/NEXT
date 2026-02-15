@@ -45,6 +45,12 @@ int main(int argc, char **argv) {
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+    // Silence stdout/stderr for all ranks except 0
+    if (rank != 0) {
+        fclose(stdout);
+    }
+  
 #endif
 
     H5Eset_auto(H5E_DEFAULT, nullptr, nullptr);
