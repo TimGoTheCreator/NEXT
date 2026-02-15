@@ -45,6 +45,12 @@ python two_body.py
 ../../next.exe two_body.txt 8 0.01 0.1 vtu
 ```
 
+#### If the copy command worked (copies to project root by default in CMake):
+../../next.exe two_body.txt 8 0.01 0.1 vtu
+
+#### If your executable is in build/
+../../build/next.exe two_body.txt 8 0.01 0.1 vtu
+
 5. **View results**
 
 Open the `.vtu` output in ParaView.
