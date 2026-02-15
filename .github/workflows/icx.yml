@@ -1,0 +1,90 @@
+name: Intel ICX Build
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+concurrency:
+  group: icx-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  icx-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ------------------------
+      # Cache APT packages
+      # ------------------------
+      - name: Cache APT packages
+        uses: actions/cache@v4
+        with:
+          path: /var/cache/apt
+          key: apt-cache-${{ runner.os }}-${{ hashFiles('**/CMakeLists.txt') }}
+          restore-keys: |
+            apt-cache-${{ runner.os }}-
+
+      # ------------------------
+      # Install Intel oneAPI (ICX/ICPX)
+      # ------------------------
+      - name: Install Intel oneAPI (ICX)
+        run: |
+          wget https://apt.repos.intel.com/intel-gpg-keys/Intel-GPG-KEY-public.asc
+          sudo apt-key add Intel-GPG-KEY-public.asc
+          sudo add-apt-repository "deb https://apt.repos.intel.com/oneapi all main"
+          sudo apt-get update
+          sudo apt-get install -y intel-oneapi-compiler-dpcpp-cpp intel-oneapi-compiler-classic
+
+      # ------------------------
+      # Install OpenMP + HDF5
+      # ------------------------
+      - name: Install OpenMP + HDF5
+        run: |
+          sudo apt-get install -y libomp-dev libhdf5-dev
+
+      # ------------------------
+      # Cache CMake build directory
+      # ------------------------
+      - name: Cache CMake build
+        uses: actions/cache@v4
+        with:
+          path: build
+          key: cmake-icx-${{ runner.os }}-${{ hashFiles('**/*.cpp', '**/*.h', '**/CMakeLists.txt') }}
+          restore-keys: |
+            cmake-icx-${{ runner.os }}-
+
+      # ------------------------
+      # Configure CMake with ICX
+      # ------------------------
+      - name: Configure project (ICX)
+        run: |
+          source /opt/intel/oneapi/setvars.sh
+          cmake -S . -B build \
+            -DCMAKE_C_COMPILER=icx \
+            -DCMAKE_CXX_COMPILER=icpx \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DNEXT_FP64=ON
+
+      # ------------------------
+      # Build project
+      # ------------------------
+      - name: Build project
+        run: |
+          source /opt/intel/oneapi/setvars.sh
+          cmake --build build -- -j$(nproc)
+
+      # ------------------------
+      # Test project
+      # ------------------------
+      - name: Run tests
+        working-directory: build
+        run: |
+          source /opt/intel/oneapi/setvars.sh
+          ctest --output-on-failure
