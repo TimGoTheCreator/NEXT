@@ -10,43 +10,43 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
+#include "floatdef.h"
 #include <cmath>
+#include <algorithm>
 
-/* Softening for BarnesHut */
+/**
+ * @brief Softening for Barnes-Hut node interactions.
+ * Note: nodeMass and dist are passed as individual reals from the SoA arrays.
+ */
 inline real nextSoftening(real nodeSize, real nodeMass, real dist) {
-  // Base softening from node size
-  real eps_size = nodeSize * real(0.015);
+    // std::pow(x, 1/3) or std::cbrt is slow. 
+    // In SoA loops, this is often the bottleneck.
+    real eps_size = nodeSize * real(0.015);
+    real eps_mass = std::cbrt(nodeMass) * real(0.002);
 
-  // Mass-based softening (physical radius proxy)
-  real eps_mass = std::cbrt(nodeMass) * real(0.002);
+    // Distance taper: strong at r->0, fades smoothly
+    real eps_taper = real(1.0) / (real(1.0) + dist * real(10.0));
 
-  // Distance taper: strong at r→0, fades smoothly
-  real eps_taper = real(1.0) / (real(1.0) + dist * real(10.0));
+    // Combine
+    real eps = (eps_size + eps_mass) * eps_taper;
 
-  // Combine
-  real eps = (eps_size + eps_mass) * eps_taper;
-
-  // Minimum floor
-  const real eps_min = real(1e-4);
-  if (eps < eps_min)
-    eps = eps_min;
-
-  return eps;
+    // Minimum floor - using std::max is cleaner and easier for the compiler to optimize
+    return std::max(eps, real(1e-4));
 }
 
-/* Softening for Gravity kernel */
+/**
+ * @brief Softening for direct particle-particle gravity kernels.
+ * ma and mb are the masses pulled from the ps.m[i] and ps.m[j] arrays.
+ */
 inline real pairSoftening(real ma, real mb) {
-  // Physical radius proxy
-  real ea = std::cbrt(ma) * real(0.002);
-  real eb = std::cbrt(mb) * real(0.002);
+    // Physical radius proxy
+    real ea = std::cbrt(ma) * real(0.002);
+    real eb = std::cbrt(mb) * real(0.002);
 
-  // Symmetric combination (quadrature)
-  real eps = std::sqrt(ea * ea + eb * eb);
+    // Symmetric combination (quadrature)
+    real epsSq = ea * ea + eb * eb;
+    real eps = std::sqrt(epsSq);
 
-  // Minimum floor
-  const real eps_min = real(1e-4);
-  if (eps < eps_min)
-    eps = eps_min;
-
-  return eps; // return epsilon
+    // Minimum floor
+    return std::max(eps, real(1e-4));
 }
