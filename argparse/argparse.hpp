@@ -17,6 +17,6 @@ struct Arguments {
     OutputFormat format;
 };
 
-Arguments parse_arguments(int argc, char** argv);
+Arguments parse_arguments(int argc, char** argv, int rank);
 
 }
