@@ -36,17 +36,18 @@ jobs:
       # ------------------------
       - name: Install Intel oneAPI (ICX)
         run: |
-          # Add Intel GPG key (new correct URL)
-          wget https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB
-          sudo apt-key add GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB
+          # Add Intel GPG key to modern keyring location
+          wget -qO- https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB \
+            | sudo tee /etc/apt/trusted.gpg.d/intel-oneapi.asc
 
           # Add Intel oneAPI repository
-          echo "deb https://apt.repos.intel.com/oneapi all main" | sudo tee /etc/apt/sources.list.d/oneAPI.list
+          echo "deb https://apt.repos.intel.com/oneapi all main" \
+            | sudo tee /etc/apt/sources.list.d/oneAPI.list
 
           sudo apt-get update
 
           # Install LLVM-based Intel compilers (ICX/ICPX)
-          sudo apt-get install -y intel-oneapi-compiler-dpcpp-cpp intel-oneapi-compiler-classic
+          sudo apt-get install -y intel-oneapi-compiler-dpcpp-cpp
 
       # ------------------------
       # Install OpenMP + HDF5
