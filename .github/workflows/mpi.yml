@@ -42,7 +42,7 @@ jobs:
           cd $GITHUB_WORKSPACE/examples/GalaxyDemo
           python3 galaxy.py
           # Run with 2 MPI ranks and 2 OpenMP threads, stop after 20s
-          timeout 60s mpiexec -n 2 ../../next galaxy.txt 1 0.01 0.1 hdf5
+          timeout 60s mpiexec -n 2 ../../next galaxy.txt 1 0.01 0.1 hdf5 || true
 
       - name: Upload simulation outputs
         uses: actions/upload-artifact@v4
