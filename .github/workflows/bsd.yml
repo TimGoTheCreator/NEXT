@@ -10,7 +10,6 @@ concurrency:
   group: freebsd-ci-${{ github.ref }}
   cancel-in-progress: true
 
-
 jobs:
   freebsd:
     name: FreeBSD ${{ matrix.version }} Build
@@ -37,3 +36,9 @@ jobs:
             cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
             cmake --build build -- -j$(sysctl -n hw.ncpu)
             cd build && ctest --output-on-failure
+
+      - name: Upload FreeBSD binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: freebsd-${{ matrix.version }}
+          path: build/*
