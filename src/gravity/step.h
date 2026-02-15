@@ -20,9 +20,6 @@
     #include <mpi.h>
 #endif
 
-/**
- * @brief Performs a complete Leapfrog Step (Kick-Drift-Kick) using SoA data.
- */
 inline void Step(ParticleSystem &ps, real dt) {
     if (ps.size() == 0) return;
 
@@ -30,15 +27,11 @@ inline void Step(ParticleSystem &ps, real dt) {
     const real half  = dt * real(0.5);
     const int  N     = static_cast<int>(ps.size());
 
-    // ---------------------------------------------------------
-    // MPI SETUP
-    // ---------------------------------------------------------
 #ifdef NEXT_MPI
     int rank, size;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-    // Select MPI datatype matching
     MPI_Datatype MPI_REAL_T;
 #  ifdef NEXT_FP64
     MPI_REAL_T = MPI_DOUBLE;
@@ -52,14 +45,10 @@ inline void Step(ParticleSystem &ps, real dt) {
     int size = 1;
 #endif
 
-    // ---------------------------------------------------------
-    // DOMAIN DECOMPOSITION
-    // ---------------------------------------------------------
     const int start = (rank * N) / size;
     const int end   = ((rank + 1) * N) / size;
 
 #ifdef NEXT_MPI
-    // Precompute counts and displacements for Allgatherv
     std::vector<int> counts(size), displs(size);
     for (int r = 0; r < size; ++r) {
         const int s = (r * N) / size;
@@ -69,9 +58,6 @@ inline void Step(ParticleSystem &ps, real dt) {
     }
 #endif
 
-    // ---------------------------------------------------------
-    // TREE BUILDER
-    // ---------------------------------------------------------
     auto buildTree = [&]() -> std::unique_ptr<Octree> {
         struct BBox { real minx, miny, minz, maxx, maxy, maxz; };
         BBox local{ real(1e30), real(1e30), real(1e30),
@@ -87,16 +73,13 @@ inline void Step(ParticleSystem &ps, real dt) {
         }
 
 #ifdef NEXT_MPI
-        BBox global;
         real mins[3] = {local.minx, local.miny, local.minz};
         real maxs[3] = {local.maxx, local.maxy, local.maxz};
 
         MPI_Allreduce(MPI_IN_PLACE, mins, 3, MPI_REAL_T, MPI_MIN, MPI_COMM_WORLD);
         MPI_Allreduce(MPI_IN_PLACE, maxs, 3, MPI_REAL_T, MPI_MAX, MPI_COMM_WORLD);
 
-        global.minx = mins[0]; global.miny = mins[1]; global.minz = mins[2];
-        global.maxx = maxs[0]; global.maxy = maxs[1]; global.maxz = maxs[2];
-
+        BBox global{mins[0], mins[1], mins[2], maxs[0], maxs[1], maxs[2]};
 #else
         BBox global = local;
 #endif
@@ -119,9 +102,7 @@ inline void Step(ParticleSystem &ps, real dt) {
         return root;
     };
 
-    // ---------------------------------------------------------
     // FIRST KICK
-    // ---------------------------------------------------------
     {
         auto root = buildTree();
 
@@ -137,22 +118,20 @@ inline void Step(ParticleSystem &ps, real dt) {
 
 #ifdef NEXT_MPI
         MPI_Request reqs[3];
-        MPI_Iallgatherv(ps.vx.data() + start, end - start, MPI_REAL_T,
+        MPI_Iallgatherv(MPI_IN_PLACE, 0, MPI_REAL_T,
                         ps.vx.data(), counts.data(), displs.data(), MPI_REAL_T,
                         MPI_COMM_WORLD, &reqs[0]);
-        MPI_Iallgatherv(ps.vy.data() + start, end - start, MPI_REAL_T,
+        MPI_Iallgatherv(MPI_IN_PLACE, 0, MPI_REAL_T,
                         ps.vy.data(), counts.data(), displs.data(), MPI_REAL_T,
                         MPI_COMM_WORLD, &reqs[1]);
-        MPI_Iallgatherv(ps.vz.data() + start, end - start, MPI_REAL_T,
+        MPI_Iallgatherv(MPI_IN_PLACE, 0, MPI_REAL_T,
                         ps.vz.data(), counts.data(), displs.data(), MPI_REAL_T,
                         MPI_COMM_WORLD, &reqs[2]);
         MPI_Waitall(3, reqs, MPI_STATUSES_IGNORE);
 #endif
     }
 
-    // ---------------------------------------------------------
     // DRIFT
-    // ---------------------------------------------------------
     #pragma omp parallel for schedule(static)
     for (int i = start; i < end; ++i) {
         ps.x[i] += ps.vx[i] * dt;
@@ -161,22 +140,20 @@ inline void Step(ParticleSystem &ps, real dt) {
     }
 
 #ifdef NEXT_MPI
-    MPI_Request reqs[3];
-    MPI_Iallgatherv(ps.x.data() + start, end - start, MPI_REAL_T,
+    MPI_Request reqs3[3];
+    MPI_Iallgatherv(MPI_IN_PLACE, 0, MPI_REAL_T,
                     ps.x.data(), counts.data(), displs.data(), MPI_REAL_T,
-                    MPI_COMM_WORLD, &reqs[0]);
-    MPI_Iallgatherv(ps.y.data() + start, end - start, MPI_REAL_T,
+                    MPI_COMM_WORLD, &reqs3[0]);
+    MPI_Iallgatherv(MPI_IN_PLACE, 0, MPI_REAL_T,
                     ps.y.data(), counts.data(), displs.data(), MPI_REAL_T,
-                    MPI_COMM_WORLD, &reqs[1]);
-    MPI_Iallgatherv(ps.z.data() + start, end - start, MPI_REAL_T,
+                    MPI_COMM_WORLD, &reqs3[1]);
+    MPI_Iallgatherv(MPI_IN_PLACE, 0, MPI_REAL_T,
                     ps.z.data(), counts.data(), displs.data(), MPI_REAL_T,
-                    MPI_COMM_WORLD, &reqs[2]);
-    MPI_Waitall(3, reqs, MPI_STATUSES_IGNORE);
+                    MPI_COMM_WORLD, &reqs3[2]);
+    MPI_Waitall(3, reqs3, MPI_STATUSES_IGNORE);
 #endif
 
-    // ---------------------------------------------------------
     // SECOND KICK
-    // ---------------------------------------------------------
     {
         auto root = buildTree();
 
@@ -191,17 +168,17 @@ inline void Step(ParticleSystem &ps, real dt) {
         }
 
 #ifdef NEXT_MPI
-        MPI_Request reqs2[3];
-        MPI_Iallgatherv(ps.vx.data() + start, end - start, MPI_REAL_T,
+        MPI_Request reqs4[3];
+        MPI_Iallgatherv(MPI_IN_PLACE, 0, MPI_REAL_T,
                         ps.vx.data(), counts.data(), displs.data(), MPI_REAL_T,
-                        MPI_COMM_WORLD, &reqs2[0]);
-        MPI_Iallgatherv(ps.vy.data() + start, end - start, MPI_REAL_T,
+                        MPI_COMM_WORLD, &reqs4[0]);
+        MPI_Iallgatherv(MPI_IN_PLACE, 0, MPI_REAL_T,
                         ps.vy.data(), counts.data(), displs.data(), MPI_REAL_T,
-                        MPI_COMM_WORLD, &reqs2[1]);
-        MPI_Iallgatherv(ps.vz.data() + start, end - start, MPI_REAL_T,
+                        MPI_COMM_WORLD, &reqs4[1]);
+        MPI_Iallgatherv(MPI_IN_PLACE, 0, MPI_REAL_T,
                         ps.vz.data(), counts.data(), displs.data(), MPI_REAL_T,
-                        MPI_COMM_WORLD, &reqs2[2]);
-        MPI_Waitall(3, reqs2, MPI_STATUSES_IGNORE);
+                        MPI_COMM_WORLD, &reqs4[2]);
+        MPI_Waitall(3, reqs4, MPI_STATUSES_IGNORE);
 #endif
     }
 }
