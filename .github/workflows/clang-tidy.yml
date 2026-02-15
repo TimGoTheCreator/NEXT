@@ -20,11 +20,32 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # ------------------------
+      # Cache APT packages
+      # ------------------------
+      - name: Cache APT packages
+        uses: actions/cache@v4
+        with:
+          path: /var/cache/apt
+          key: apt-cache-${{ runner.os }}-${{ hashFiles('**/CMakeLists.txt') }}
+          restore-keys: |
+            apt-cache-${{ runner.os }}-
+
       - name: Install dependencies (clang-tidy + HDF5 + OpenMP)
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang-tidy libhdf5-dev
-          sudo apt-get install -y libomp-dev
+          sudo apt-get install -y clang-tidy libhdf5-dev libomp-dev
+
+      # ------------------------
+      # Cache CMake build directory
+      # ------------------------
+      - name: Cache CMake build
+        uses: actions/cache@v4
+        with:
+          path: build
+          key: cmake-${{ runner.os }}-${{ hashFiles('**/*.cpp', '**/*.h', '**/CMakeLists.txt') }}
+          restore-keys: |
+            cmake-${{ runner.os }}-
 
       - name: Configure project (CMake)
         run: |
@@ -36,6 +57,6 @@ jobs:
         run: |
           cmake --build build -- -j$(nproc)
 
-      - name: Run clang-tidy using compile_commands.json
+      - name: Run clang-tidy
         run: |
           find src -name "*.cpp" | xargs -I{} clang-tidy {} -p build
