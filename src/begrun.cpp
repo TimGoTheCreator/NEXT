@@ -22,13 +22,42 @@
 #include <omp.h>
 #include <string>
 #include <vector>
+#ifdef NEXT_MPI
+  #include <mpi.h>
+#endif
+#include "hdf5.h"
+
 
 using next::OutputFormat;
 
-int main(int argc, char **argv) {
-  auto args = next::parse_arguments(argc, argv);
+// Helper: only rank 0, thread 0 prints
+inline void log_once(int rank, const std::string &msg) {
+    if (rank == 0 && omp_get_thread_num() == 0) {
+        std::cout << msg << std::endl;
+    }
+}
 
-  static constexpr const char *BANNER = R"NEXTBANNER(
+int main(int argc, char **argv) {
+    int rank = 0;
+    int size = 1;
+
+#ifdef NEXT_MPI
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+    // Silence stdout/stderr for all ranks except 0
+    if (rank != 0) {
+        fclose(stdout);
+    }
+  
+#endif
+
+    H5Eset_auto(H5E_DEFAULT, nullptr, nullptr);
+
+    auto args = next::parse_arguments(argc, argv, rank);
+
+    static constexpr const char *BANNER = R"NEXTBANNER(
  _  _ ________   _________ 
 | \ | |  ____\ \ / /__   __|
 |  \| | |__   \ V /   | |   
@@ -37,73 +66,71 @@ int main(int argc, char **argv) {
 |_| \_|______/_/ \_\  |_|   
 )NEXTBANNER";
 
-  std::cout << BANNER << '\n';
+    omp_set_num_threads(args.threads);
 
-  // Set threads and report
-  omp_set_num_threads(args.threads);
-  std::cout << " Threads:   " << args.threads << "\n";
-
+    // Only rank 0 prints startup info
+    if (rank == 0 && omp_get_thread_num() == 0) {
+#ifdef NEXT_MPI
+        std::cout << "MPI mode enabled (" << size << " ranks)" << std::endl;
+#endif
+        std::cout << BANNER << std::endl;
+        std::cout << " Threads:   " << args.threads << std::endl;
 #ifdef NEXT_FP64
-  std::cout << " Precision: FP64\n";
+        std::cout << " Precision: FP64" << std::endl;
 #elif defined(NEXT_FP32)
-  std::cout << " Precision: FP32\n";
+        std::cout << " Precision: FP32" << std::endl;
+#endif
+    }
+
+    // Load particles
+    Particle particles = LoadParticlesFromFile(args.input_file);
+    if (rank == 0 && omp_get_thread_num() == 0) {
+        std::cout << " Particles: " << particles.size() << std::endl;
+    }
+
+    real simTime = 0;
+    real nextDump = 0;
+    int step = 0;
+    char command;
+
+    while (true) {
+        real dtAdaptive = computeAdaptiveDt(particles, args.dt);
+        Step(particles, dtAdaptive);
+        simTime += dtAdaptive;
+
+        if (simTime >= nextDump) {
+            std::string out = "dump_" + std::to_string(step);
+
+            switch (args.format) {
+                case OutputFormat::VTK:  out += ".vtk";  SaveVTK(particles, out);  break;
+                case OutputFormat::VTU:  out += ".vtu";  SaveVTU(particles, out);  break;
+                case OutputFormat::HDF5: out += ".hdf5"; SaveHDF5(particles, out); break;
+            }
+
+            if (rank == 0 && omp_get_thread_num() == 0) {
+                std::cout << "[Dump " << step << "] t = " << simTime
+                          << ", file: " << out << std::endl;
+            }
+
+            nextDump += args.dump_interval;
+            step++;
+        }
+
+        // Non-blocking exit check
+        if (std::cin.rdbuf()->in_avail() > 0) {
+            std::cin >> command;
+            if (command == 'q' || command == 'Q') {
+                if (rank == 0 && omp_get_thread_num() == 0) {
+                    std::cout << "Exiting..." << std::endl;
+                }
+                break;
+            }
+        }
+    }
+
+#ifdef NEXT_MPI
+    MPI_Finalize();
 #endif
 
-  // --- SoA UPDATE ---
-  // LoadParticlesFromFile now returns a single 'Particle' struct
-  // which internally contains all the parallel vectors.
-  Particle particles = LoadParticlesFromFile(args.input_file);
-
-  std::cout << " Particles: " << particles.size() << "\n";
-
-  real simTime = 0;
-  real nextDump = 0;
-  int step = 0;
-  char command;
-
-  while (true) {
-    // Both computeAdaptiveDt and Step now take the SoA object by reference
-    real dtAdaptive = computeAdaptiveDt(particles, args.dt);
-    Step(particles, dtAdaptive);
-    
-    simTime += dtAdaptive;
-
-    if (simTime >= nextDump) {
-      std::string out = "dump_" + std::to_string(step);
-
-      switch (args.format) {
-        case OutputFormat::VTK:
-          out += ".vtk";
-          SaveVTK(particles, out);
-          break;
-
-        case OutputFormat::VTU:
-          out += ".vtu";
-          SaveVTU(particles, out);
-          break;
-
-        case OutputFormat::HDF5:
-          out += ".hdf5";
-          SaveHDF5(particles, out);
-          break;
-      }
-
-      std::cout << "[Dump " << step << "] t = " << simTime
-                << ", file: " << out << "\n";
-
-      nextDump += args.dump_interval;
-      step++;
-    }
-
-    // Non-blocking exit check
-    if (std::cin.rdbuf()->in_avail() > 0) {
-      std::cin >> command;
-      if (command == 'q' || command == 'Q') {
-        std::cout << "Exiting...\n";
-        break;
-      }
-    }
-  }
-
-  return 0;
+    return 0;
 }

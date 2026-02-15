@@ -16,82 +16,169 @@
 #include <memory>
 #include <algorithm>
 #include <omp.h>
+#ifdef NEXT_MPI
+    #include <mpi.h>
+#endif
 
-/**
- * @brief Performs a complete Leapfrog Step (Kick-Drift-Kick) using SoA data.
- */
 inline void Step(ParticleSystem &ps, real dt) {
     if (ps.size() == 0) return;
 
-    const real theta = 0.5;
-    const real half = dt * real(0.5);
-    const int N = static_cast<int>(ps.size());
+    const real theta = real(0.5);
+    const real half  = dt * real(0.5);
+    const int  N     = static_cast<int>(ps.size());
 
-    // Helper lambda to build the tree using the ParticleSystem indices
+#ifdef NEXT_MPI
+    int rank, size;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+    MPI_Datatype MPI_REAL_T;
+#  ifdef NEXT_FP64
+    MPI_REAL_T = MPI_DOUBLE;
+#  elif defined(NEXT_FP32)
+    MPI_REAL_T = MPI_FLOAT;
+#  else
+#    error "Define NEXT_FP32 or NEXT_FP64 for 'real' type."
+#  endif
+#else
+    int rank = 0;
+    int size = 1;
+#endif
+
+    const int start = (rank * N) / size;
+    const int end   = ((rank + 1) * N) / size;
+
+#ifdef NEXT_MPI
+    std::vector<int> counts(size), displs(size);
+    for (int r = 0; r < size; ++r) {
+        const int s = (r * N) / size;
+        const int e = ((r + 1) * N) / size;
+        counts[r]   = e - s;
+        displs[r]   = s;
+    }
+#endif
+
     auto buildTree = [&]() -> std::unique_ptr<Octree> {
-        real minx = 1e30, miny = 1e30, minz = 1e30;
-        real maxx = -1e30, maxy = -1e30, maxz = -1e30;
+        struct BBox { real minx, miny, minz, maxx, maxy, maxz; };
+        BBox local{ real(1e30), real(1e30), real(1e30),
+                    real(-1e30), real(-1e30), real(-1e30) };
 
-        // Bounding box calculation (SoA access is very fast here)
         for (int i = 0; i < N; ++i) {
-            minx = std::min(minx, ps.x[i]); miny = std::min(miny, ps.y[i]); minz = std::min(minz, ps.z[i]);
-            maxx = std::max(maxx, ps.x[i]); maxy = std::max(maxy, ps.y[i]); maxz = std::max(maxz, ps.z[i]);
+            local.minx = std::min(local.minx, ps.x[i]);
+            local.miny = std::min(local.miny, ps.y[i]);
+            local.minz = std::min(local.minz, ps.z[i]);
+            local.maxx = std::max(local.maxx, ps.x[i]);
+            local.maxy = std::max(local.maxy, ps.y[i]);
+            local.maxz = std::max(local.maxz, ps.z[i]);
         }
 
-        real cx = (minx + maxx) * 0.5;
-        real cy = (miny + maxy) * 0.5;
-        real cz = (minz + maxz) * 0.5;
-        real size = std::max({maxx - minx, maxy - miny, maxz - minz}) * 0.5;
+#ifdef NEXT_MPI
+        real mins[3] = {local.minx, local.miny, local.minz};
+        real maxs[3] = {local.maxx, local.maxy, local.maxz};
 
-        if (size <= 0) size = 1.0;
+        MPI_Allreduce(MPI_IN_PLACE, mins, 3, MPI_REAL_T, MPI_MIN, MPI_COMM_WORLD);
+        MPI_Allreduce(MPI_IN_PLACE, maxs, 3, MPI_REAL_T, MPI_MAX, MPI_COMM_WORLD);
+
+        BBox global{mins[0], mins[1], mins[2], maxs[0], maxs[1], maxs[2]};
+#else
+        BBox global = local;
+#endif
+
+        const real cx   = (global.minx + global.maxx) * real(0.5);
+        const real cy   = (global.miny + global.maxy) * real(0.5);
+        const real cz   = (global.minz + global.maxz) * real(0.5);
+        real       size = std::max({global.maxx - global.minx,
+                                    global.maxy - global.miny,
+                                    global.maxz - global.minz}) * real(0.5);
+
+        if (size <= real(0)) size = real(1.0);
 
         auto root = std::make_unique<Octree>(cx, cy, cz, size);
 
-        // Insert particle indices 0 to N-1
-        for (int i = 0; i < N; ++i) {
+        for (int i = 0; i < N; ++i)
             root->insert(i, ps);
-        }
 
         root->computeMass(ps);
         return root;
     };
 
-    // --- First Kick (dt/2) ---
+    // FIRST KICK
     {
-        std::unique_ptr<Octree> root = buildTree();
+        auto root = buildTree();
 
         #pragma omp parallel for schedule(dynamic, 64)
-        for (int i = 0; i < N; ++i) {
-            real ax = 0, ay = 0, az = 0;
+        for (int i = start; i < end; ++i) {
+            real ax = real(0), ay = real(0), az = real(0);
             bhAccel(root.get(), i, ps, theta, ax, ay, az);
 
             ps.vx[i] += ax * half;
             ps.vy[i] += ay * half;
             ps.vz[i] += az * half;
         }
+
+#ifdef NEXT_MPI
+        MPI_Request reqs[3];
+        MPI_Iallgatherv(MPI_IN_PLACE, 0, MPI_REAL_T,
+                        ps.vx.data(), counts.data(), displs.data(), MPI_REAL_T,
+                        MPI_COMM_WORLD, &reqs[0]);
+        MPI_Iallgatherv(MPI_IN_PLACE, 0, MPI_REAL_T,
+                        ps.vy.data(), counts.data(), displs.data(), MPI_REAL_T,
+                        MPI_COMM_WORLD, &reqs[1]);
+        MPI_Iallgatherv(MPI_IN_PLACE, 0, MPI_REAL_T,
+                        ps.vz.data(), counts.data(), displs.data(), MPI_REAL_T,
+                        MPI_COMM_WORLD, &reqs[2]);
+        MPI_Waitall(3, reqs, MPI_STATUSES_IGNORE);
+#endif
     }
 
-    // --- Drift (dt) ---
-    // Contiguous memory access makes this loop ideal for SIMD
+    // DRIFT
     #pragma omp parallel for schedule(static)
-    for (int i = 0; i < N; ++i) {
+    for (int i = start; i < end; ++i) {
         ps.x[i] += ps.vx[i] * dt;
         ps.y[i] += ps.vy[i] * dt;
         ps.z[i] += ps.vz[i] * dt;
     }
 
-    // --- Second Kick (dt/2) ---
+#ifdef NEXT_MPI
+    MPI_Request reqs3[3];
+    MPI_Iallgatherv(MPI_IN_PLACE, 0, MPI_REAL_T,
+                    ps.x.data(), counts.data(), displs.data(), MPI_REAL_T,
+                    MPI_COMM_WORLD, &reqs3[0]);
+    MPI_Iallgatherv(MPI_IN_PLACE, 0, MPI_REAL_T,
+                    ps.y.data(), counts.data(), displs.data(), MPI_REAL_T,
+                    MPI_COMM_WORLD, &reqs3[1]);
+    MPI_Iallgatherv(MPI_IN_PLACE, 0, MPI_REAL_T,
+                    ps.z.data(), counts.data(), displs.data(), MPI_REAL_T,
+                    MPI_COMM_WORLD, &reqs3[2]);
+    MPI_Waitall(3, reqs3, MPI_STATUSES_IGNORE);
+#endif
+
+    // SECOND KICK
     {
-        std::unique_ptr<Octree> root = buildTree();
+        auto root = buildTree();
 
         #pragma omp parallel for schedule(dynamic, 64)
-        for (int i = 0; i < N; ++i) {
-            real ax = 0, ay = 0, az = 0;
+        for (int i = start; i < end; ++i) {
+            real ax = real(0), ay = real(0), az = real(0);
             bhAccel(root.get(), i, ps, theta, ax, ay, az);
 
             ps.vx[i] += ax * half;
             ps.vy[i] += ay * half;
             ps.vz[i] += az * half;
         }
+
+#ifdef NEXT_MPI
+        MPI_Request reqs4[3];
+        MPI_Iallgatherv(MPI_IN_PLACE, 0, MPI_REAL_T,
+                        ps.vx.data(), counts.data(), displs.data(), MPI_REAL_T,
+                        MPI_COMM_WORLD, &reqs4[0]);
+        MPI_Iallgatherv(MPI_IN_PLACE, 0, MPI_REAL_T,
+                        ps.vy.data(), counts.data(), displs.data(), MPI_REAL_T,
+                        MPI_COMM_WORLD, &reqs4[1]);
+        MPI_Iallgatherv(MPI_IN_PLACE, 0, MPI_REAL_T,
+                        ps.vz.data(), counts.data(), displs.data(), MPI_REAL_T,
+                        MPI_COMM_WORLD, &reqs4[2]);
+        MPI_Waitall(3, reqs4, MPI_STATUSES_IGNORE);
+#endif
     }
 }

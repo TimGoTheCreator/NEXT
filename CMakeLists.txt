@@ -11,6 +11,12 @@ if (MINGW)
 elseif (MSVC)
     message(STATUS "Detected MSVC — using MSVC settings")
     set(USING_MSVC TRUE)
+elseif (APPLE)
+    message(STATUS "Detected macOS — limited MPI support")
+    set(USING_APPLE TRUE)
+elseif (UNIX)
+    message(STATUS "Detected Linux/UNIX — using standard settings")
+    set(USING_UNIX TRUE)
 endif()
 
 # ============================
@@ -18,19 +24,15 @@ endif()
 # ============================
 option(NEXT_FP32 "Use 32-bit floats (scalar)" OFF)
 option(NEXT_FP64 "Use 64-bit floats (scalar)" ON)
+option(NEXT_MPI "Enable MPI support" OFF)
 
-# Option: copy final executable to source dir
 option(NEXT_COPY_TO_CMAKE_SOURCE_DIR "Copy final executable from build dir to source dir" ON)
 
 # ============================
 # Precision modes
 # ============================
-set(NEXT_MODES
-    NEXT_FP32
-    NEXT_FP64
-)
+set(NEXT_MODES NEXT_FP32 NEXT_FP64)
 
-# Count enabled modes
 set(NEXT_MODE_COUNT 0)
 foreach(m ${NEXT_MODES})
     if(${m})
@@ -38,14 +40,12 @@ foreach(m ${NEXT_MODES})
     endif()
 endforeach()
 
-# Enforce exactly one mode
 if(NEXT_MODE_COUNT EQUAL 0)
     message(FATAL_ERROR "You must enable NEXT_FP64 or NEXT_FP32.")
 elseif(NEXT_MODE_COUNT GREATER 1)
     message(FATAL_ERROR "Enable only one precision mode.")
 endif()
 
-# Apply compile definitions
 if(NEXT_FP32)
     add_compile_definitions(NEXT_FP32)
 elseif(NEXT_FP64)
@@ -62,7 +62,10 @@ file(GLOB ARGPARSE_FILES ${CMAKE_SOURCE_DIR}/argparse/*.cpp)
 
 add_executable(next ${SRC_FILES} ${ARGPARSE_FILES})
 
-option(ENABLE_VEC_REPORT "Enable compiler vectorization reports" ON)
+# ============================
+# Vectorization reports
+# ============================
+option(ENABLE_VEC_REPORT "Enable compiler vectorization reports" OFF)
 
 if(ENABLE_VEC_REPORT)
     if(CMAKE_CXX_COMPILER_ID MATCHES "IntelLLVM")
@@ -74,38 +77,56 @@ if(ENABLE_VEC_REPORT)
     endif()
 endif()
 
-
 # ============================
 # OpenMP
 # ============================
 find_package(OpenMP QUIET)
 if(OpenMP_CXX_FOUND)
     message(STATUS "OpenMP detected — enabling multithreading.")
-    
     if(MSVC)
-        # Force MSVC to use the modern LLVM backend (supports OpenMP 3.0+ and size_t)
-        # We add it as a compiler option because MSVC's default find_package 
-        # often defaults to the legacy /openmp flag.
         target_compile_options(next PRIVATE /openmp:llvm)
     else()
         target_link_libraries(next PRIVATE OpenMP::OpenMP_CXX)
     endif()
-    
 else()
     message(STATUS "OpenMP not found — building in single-threaded mode.")
 endif()
 
 # ============================
+# MPI detection
+# ============================
+if(NEXT_MPI)
+    if(USING_UNIX)
+        # Linux: standard OpenMPI
+        find_package(MPI REQUIRED)
+        message(STATUS "MPI (OpenMPI) detected — enabling distributed memory parallelism.")
+        target_compile_definitions(next PRIVATE NEXT_MPI)
+        target_link_libraries(next PRIVATE MPI::MPI_CXX)
+
+    elseif(USING_MSVC OR USING_MINGW)
+        # Windows: Microsoft MPI
+        find_package(MPI REQUIRED)
+        message(STATUS "MPI (MS-MPI) detected — enabling distributed memory parallelism.")
+        target_compile_definitions(next PRIVATE NEXT_MPI)
+        target_link_libraries(next PRIVATE MPI::MPI_CXX)
+
+    elseif(USING_APPLE)
+        message(WARNING "MPI requested, but macOS does not ship MPI by default. Please install OpenMPI via Homebrew (brew install open-mpi).")
+        find_package(MPI REQUIRED)
+        target_compile_definitions(next PRIVATE NEXT_MPI)
+        target_link_libraries(next PRIVATE MPI::MPI_CXX)
+    endif()
+endif()
+
+# ============================
 # HDF5 detection
 # ============================
-# MSVC: use vcpkg or prebuilt binaries
 if (USING_MSVC AND DEFINED ENV{HDF5_DIR})
     set(HDF5_ROOT "$ENV{HDF5_DIR}")
     set(CMAKE_PREFIX_PATH "${HDF5_ROOT};${CMAKE_PREFIX_PATH}")
 endif()
 
 if (USING_MINGW)
-    # MSYS2 MinGW installs HDF5 here
     set(CMAKE_PREFIX_PATH "C:/tools/msys64/mingw64")
     message(STATUS "Using MSYS2 MinGW HDF5 path: ${CMAKE_PREFIX_PATH}")
 endif()

@@ -1,0 +1,53 @@
+name: MPI Galaxy Demo
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+concurrency:
+  group: mpi-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mpi-galaxy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies (MPI + HDF5 + Python)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mpich libhdf5-dev libomp-dev cmake build-essential python3
+
+      - name: Configure project (CMake)
+        run: |
+          mkdir -p build
+          cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DNEXT_FP64=ON -DNEXT_MPI=ON
+
+      - name: Build project
+        run: |
+          cd build
+          cmake --build . -- -j$(nproc)
+
+      - name: Run Galaxy demo (timed)
+        run: |
+          # Go back to project root
+          cd $GITHUB_WORKSPACE/examples/GalaxyDemo
+          python3 galaxy.py
+          # Run with 2 MPI ranks and 2 OpenMP threads, stop after 20s
+          timeout 60s mpiexec -n 2 ../../next galaxy.txt 1 0.01 0.1 hdf5 || true
+
+      - name: Upload simulation outputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: galaxy-dumps
+          path: |
+            examples/GalaxyDemo/dump_*.hdf5
+            examples/GalaxyDemo/dump_*.xdmf
