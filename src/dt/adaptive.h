@@ -16,27 +16,37 @@
 #include <cmath>
 #include <vector>
 
-real computeAdaptiveDt(const std::vector<Particle> &p, real base_dt) {
-  real maxSpeed = 0;
+/**
+ * @brief Computes a global adaptive time-step based on the maximum velocity in the system.
+ * Updated for SoA (Structure of Arrays) for better cache performance.
+ */
+real computeAdaptiveDt(const Particle &p, real base_dt) {
+    real maxSpeedSq = 0;
+    const size_t N = p.size();
 
-  for (const auto &a : p) {
-    real speed = std::sqrt(a.vx * a.vx + a.vy * a.vy + a.vz * a.vz);
-    if (speed > maxSpeed)
-      maxSpeed = speed;
-  }
+    // High-speed linear scan through velocity arrays
+    // The compiler can easily vectorize this with SIMD (AVX/SSE)
+    for (size_t i = 0; i < N; ++i) {
+        real speedSq = p.vx[i] * p.vx[i] + p.vy[i] * p.vy[i] + p.vz[i] * p.vz[i];
+        if (speedSq > maxSpeedSq)
+            maxSpeedSq = speedSq;
+    }
 
-  maxSpeed = std::min(maxSpeed, real(1e4));
+    real maxSpeed = std::sqrt(maxSpeedSq);
+    
+    // Safety clamp to prevent dt from exploding or becoming zero
+    maxSpeed = std::min(maxSpeed, real(1e4));
 
-  // If everything is basically stationary, use base dt
-  if (maxSpeed < real(1e-8))
-    return base_dt;
+    // If everything is basically stationary, use base dt
+    if (maxSpeed < real(1e-8))
+        return base_dt;
 
-  // Smaller dt when speeds are high
-  real dt = base_dt / (1 + maxSpeed);
+    // Standard Courant-like condition: smaller dt when speeds are high
+    real dt = base_dt / (1 + maxSpeed);
 
-  // Clamp dt to a reasonable range
-  dt = std::max(dt, base_dt * real(0.01)); // never smaller than 1% of base
-  dt = std::min(dt, base_dt * real(1.0));  // never larger than base
+    // Clamp dt to a reasonable range
+    dt = std::max(dt, base_dt * real(0.01)); // never smaller than 1% of base
+    dt = std::min(dt, base_dt * real(1.0));  // never larger than base
 
-  return dt;
+    return dt;
 }
