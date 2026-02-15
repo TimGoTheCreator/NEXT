@@ -28,23 +28,20 @@ using next::OutputFormat;
 int main(int argc, char **argv) {
   auto args = next::parse_arguments(argc, argv);
 
-  // ASCII banner (raw string literal preserves backslashes and spacing)
   static constexpr const char *BANNER = R"NEXTBANNER(
-_   _ ________   _________ 
+ _  _ ________   _________ 
 | \ | |  ____\ \ / /__   __|
 |  \| | |__   \ V /   | |   
 | . ` |  __|   > <    | |   
 | |\  | |____ / . \   | |   
-|_| \_|______/_/ \_\  |_|  
+|_| \_|______/_/ \_\  |_|   
 )NEXTBANNER";
 
-  // Print banner once at startup
   std::cout << BANNER << '\n';
 
   // Set threads and report
   omp_set_num_threads(args.threads);
-
-  std::cout << " Threads: " << args.threads << "\n";
+  std::cout << " Threads:   " << args.threads << "\n";
 
 #ifdef NEXT_FP64
   std::cout << " Precision: FP64\n";
@@ -52,8 +49,12 @@ _   _ ________   _________
   std::cout << " Precision: FP32\n";
 #endif
 
-  // Load particles
-  std::vector<Particle> particles = LoadParticlesFromFile(args.input_file);
+  // --- SoA UPDATE ---
+  // LoadParticlesFromFile now returns a single 'Particle' struct
+  // which internally contains all the parallel vectors.
+  Particle particles = LoadParticlesFromFile(args.input_file);
+
+  std::cout << " Particles: " << particles.size() << "\n";
 
   real simTime = 0;
   real nextDump = 0;
@@ -61,43 +62,46 @@ _   _ ________   _________
   char command;
 
   while (true) {
+    // Both computeAdaptiveDt and Step now take the SoA object by reference
     real dtAdaptive = computeAdaptiveDt(particles, args.dt);
     Step(particles, dtAdaptive);
+    
     simTime += dtAdaptive;
 
-        if (simTime >= nextDump) {
-            std::string out = "dump_" + std::to_string(step);
+    if (simTime >= nextDump) {
+      std::string out = "dump_" + std::to_string(step);
 
-            switch (args.format) {
-                case OutputFormat::VTK:
-                    out += ".vtk";
-                    SaveVTK(particles, out);
-                    break;
+      switch (args.format) {
+        case OutputFormat::VTK:
+          out += ".vtk";
+          SaveVTK(particles, out);
+          break;
 
-                case OutputFormat::VTU:
-                    out += ".vtu";
-                    SaveVTU(particles, out);
-                    break;
+        case OutputFormat::VTU:
+          out += ".vtu";
+          SaveVTU(particles, out);
+          break;
 
-                case OutputFormat::HDF5:
-                    out += ".hdf5";
-                    SaveHDF5(particles, out);
-                    break;
-            }
+        case OutputFormat::HDF5:
+          out += ".hdf5";
+          SaveHDF5(particles, out);
+          break;
+      }
 
-            std::cout << "[Dump " << step << "] t = " << simTime
-                      << ", file: " << out << "\n";
+      std::cout << "[Dump " << step << "] t = " << simTime
+                << ", file: " << out << "\n";
 
-            nextDump += args.dump_interval;
-            step++;
-        }
+      nextDump += args.dump_interval;
+      step++;
+    }
 
-
+    // Non-blocking exit check
     if (std::cin.rdbuf()->in_avail() > 0) {
       std::cin >> command;
-      if (command == 'q' || command == 'Q')
+      if (command == 'q' || command == 'Q') {
         std::cout << "Exiting...\n";
-      break;
+        break;
+      }
     }
   }
 
