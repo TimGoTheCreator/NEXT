@@ -23,43 +23,30 @@ jobs:
         build_type: [Release]
         c_compiler: [gcc, clang, cl]
         include:
-          # Windows MSVC (latest)
           - os: windows-latest
             c_compiler: cl
             cpp_compiler: cl
-
-          # Windows MSVC (2022)
           - os: windows-2022
             c_compiler: cl
             cpp_compiler: cl
-
-          # Windows MinGW (latest)
           - os: windows-latest
             c_compiler: gcc
             cpp_compiler: g++
-
-          # Windows MinGW (2022)
           - os: windows-2022
             c_compiler: gcc
             cpp_compiler: g++
-
-          # Ubuntu GCC
           - os: ubuntu-22.04
             c_compiler: gcc
             cpp_compiler: g++
           - os: ubuntu-24.04
             c_compiler: gcc
             cpp_compiler: g++
-
-          # Ubuntu Clang
           - os: ubuntu-22.04
             c_compiler: clang
             cpp_compiler: clang++
           - os: ubuntu-24.04
             c_compiler: clang
             cpp_compiler: clang++
-
-          # macOS
           - os: macos-latest
             c_compiler: clang
             cpp_compiler: clang++
@@ -81,9 +68,56 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # ------------------------
+      # ---------------------------------------------------------
+      # CACHE: APT (Ubuntu)
+      # ---------------------------------------------------------
+      - name: Cache APT packages
+        if: startsWith(matrix.os, 'ubuntu')
+        uses: actions/cache@v4
+        with:
+          path: /var/cache/apt
+          key: apt-${{ matrix.os }}-${{ hashFiles('**/CMakeLists.txt') }}
+          restore-keys: apt-${{ matrix.os }}-
+
+      # ---------------------------------------------------------
+      # CACHE: Homebrew (macOS)
+      # ---------------------------------------------------------
+      - name: Cache Homebrew
+        if: matrix.os == 'macos-latest'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/Homebrew
+            /usr/local/Homebrew
+            /opt/homebrew
+          key: brew-${{ matrix.os }}-${{ hashFiles('**/CMakeLists.txt') }}
+          restore-keys: brew-${{ matrix.os }}-
+
+      # ---------------------------------------------------------
+      # CACHE: vcpkg (Windows MSVC)
+      # ---------------------------------------------------------
+      - name: Cache vcpkg
+        if: (matrix.os == 'windows-latest' || matrix.os == 'windows-2022') && matrix.c_compiler == 'cl'
+        uses: actions/cache@v4
+        with:
+          path: C:/vcpkg
+          key: vcpkg-${{ matrix.os }}-${{ hashFiles('**/CMakeLists.txt') }}
+          restore-keys: vcpkg-${{ matrix.os }}-
+
+      # ---------------------------------------------------------
+      # CACHE: CMake build directory
+      # ---------------------------------------------------------
+      - name: Cache CMake build
+        uses: actions/cache@v4
+        with:
+          path: build
+          key: cmake-${{ matrix.os }}-${{ matrix.c_compiler }}-${{ hashFiles('**/*.cpp', '**/*.h', '**/CMakeLists.txt') }}
+          restore-keys: |
+            cmake-${{ matrix.os }}-${{ matrix.c_compiler }}-
+
+      # ---------------------------------------------------------
       # Install dependencies
-      # ------------------------
+      # ---------------------------------------------------------
       - name: Install OpenMP + HDF5 (Ubuntu)
         if: startsWith(matrix.os, 'ubuntu')
         run: |
@@ -108,22 +142,23 @@ jobs:
         if: (matrix.os == 'windows-latest' || matrix.os == 'windows-2022') && matrix.c_compiler == 'cl'
         shell: powershell
         run: |
-          git clone https://github.com/microsoft/vcpkg.git C:/vcpkg
-          C:/vcpkg/bootstrap-vcpkg.bat
+          if (!(Test-Path "C:/vcpkg")) {
+            git clone https://github.com/microsoft/vcpkg.git C:/vcpkg
+            C:/vcpkg/bootstrap-vcpkg.bat
+          }
           C:/vcpkg/vcpkg install hdf5[hl]:x64-windows
 
-      # ------------------------
+      # ---------------------------------------------------------
       # Set build directory
-      # ------------------------
+      # ---------------------------------------------------------
       - name: Set reusable strings
         id: strings
         shell: bash
-        run: |
-          echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
+        run: echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
 
-      # ------------------------
+      # ---------------------------------------------------------
       # Configure CMake
-      # ------------------------
+      # ---------------------------------------------------------
       - name: Configure CMake (macOS)
         if: matrix.os == 'macos-latest'
         run: >
@@ -163,22 +198,22 @@ jobs:
           -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
 
-      # ------------------------
+      # ---------------------------------------------------------
       # Build
-      # ------------------------
+      # ---------------------------------------------------------
       - name: Build
         run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
 
-      # ------------------------
+      # ---------------------------------------------------------
       # Test
-      # ------------------------
+      # ---------------------------------------------------------
       - name: Test
         working-directory: ${{ steps.strings.outputs.build-output-dir }}
         run: ctest --output-on-failure --build-config ${{ matrix.build_type }}
 
-      # ------------------------
+      # ---------------------------------------------------------
       # Upload artifacts
-      # ------------------------
+      # ---------------------------------------------------------
       - name: Upload binaries
         uses: actions/upload-artifact@v4
         with:
