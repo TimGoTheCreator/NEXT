@@ -62,6 +62,19 @@ file(GLOB ARGPARSE_FILES ${CMAKE_SOURCE_DIR}/argparse/*.cpp)
 
 add_executable(next ${SRC_FILES} ${ARGPARSE_FILES})
 
+option(ENABLE_VEC_REPORT "Enable compiler vectorization reports" ON)
+
+if(ENABLE_VEC_REPORT)
+    if(CMAKE_CXX_COMPILER_ID MATCHES "IntelLLVM")
+        target_compile_options(next PRIVATE -O3 -Rpass=loop-vectorize -Rpass-missed=loop-vectorize)
+    elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        target_compile_options(next PRIVATE -O3 -fopt-info-vec-optimized -fopt-info-vec-missed)
+    elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+        target_compile_options(next PRIVATE -O3 -Rpass=loop-vectorize -Rpass-missed=loop-vectorize)
+    endif()
+endif()
+
+
 # ============================
 # OpenMP
 # ============================
