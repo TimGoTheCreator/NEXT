@@ -20,7 +20,7 @@
  * @brief Structure of Arrays (SoA) container for the particle data.
  * This layout is significantly faster for SIMD vectorization and cache locality.
  */
-struct ParticleSystem {
+struct Particle {
     // Positions
     std::vector<real> x, y, z;
     // Velocities
