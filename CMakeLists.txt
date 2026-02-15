@@ -68,7 +68,16 @@ add_executable(next ${SRC_FILES} ${ARGPARSE_FILES})
 find_package(OpenMP QUIET)
 if(OpenMP_CXX_FOUND)
     message(STATUS "OpenMP detected — enabling multithreading.")
-    target_link_libraries(next PRIVATE OpenMP::OpenMP_CXX)
+    
+    if(MSVC)
+        # Force MSVC to use the modern LLVM backend (supports OpenMP 3.0+ and size_t)
+        # We add it as a compiler option because MSVC's default find_package 
+        # often defaults to the legacy /openmp flag.
+        target_compile_options(next PRIVATE /openmp:llvm)
+    else()
+        target_link_libraries(next PRIVATE OpenMP::OpenMP_CXX)
+    endif()
+    
 else()
     message(STATUS "OpenMP not found — building in single-threaded mode.")
 endif()

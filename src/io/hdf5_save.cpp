@@ -1,103 +1,99 @@
-#include "hdf5_save.h"
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+#include "struct/particle.h"
 #include <hdf5.h>
 #include <vector>
 #include <string>
 #include <fstream>
+#include <iostream>
 
-void SaveHDF5(const std::vector<Particle>& p, const std::string& filename)
+/**
+ * @brief Saves the ParticleSystem to HDF5. 
+ * Detects real precision to match NEXT_FP32 or NEXT_FP64.
+ */
+void SaveHDF5(const ParticleSystem& ps, const std::string& filename)
 {
-    hid_t file = H5Fcreate(filename.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+    const size_t N = ps.size();
+    if (N == 0) return;
 
-    // Group: PartType1 (DM)
+    hid_t file = H5Fcreate(filename.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+    if (file < 0) return;
+
     hid_t group = H5Gcreate(file, "PartType1", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
-    size_t N = p.size();
-
-    // Prepare arrays
+    // 1. Handle Coordinate/Velocity zipping
+    // We keep these as float for visualization efficiency (ParaView rarely needs double)
     std::vector<float> coords(N * 3);
     std::vector<float> vels(N * 3);
-    std::vector<float> masses(N);
     std::vector<int> ids(N);
 
+    #pragma omp parallel for
     for (size_t i = 0; i < N; i++) {
-        coords[3*i+0] = p[i].x;
-        coords[3*i+1] = p[i].y;
-        coords[3*i+2] = p[i].z;
-
-        vels[3*i+0] = p[i].vx;
-        vels[3*i+1] = p[i].vy;
-        vels[3*i+2] = p[i].vz;
-
-        masses[i] = p[i].m;
-        ids[i] = i + 1; // Gadget requires IDs
+        coords[3*i+0] = (float)ps.x[i];
+        coords[3*i+1] = (float)ps.y[i];
+        coords[3*i+2] = (float)ps.z[i];
+        vels[3*i+0]   = (float)ps.vx[i];
+        vels[3*i+1]   = (float)ps.vy[i];
+        vels[3*i+2]   = (float)ps.vz[i];
+        ids[i] = (int)i + 1;
     }
 
-    // Dataspace for Nx3
     hsize_t dims3[2] = { N, 3 };
     hid_t space3 = H5Screate_simple(2, dims3, NULL);
-
-    // Dataspace for N
     hsize_t dims1[1] = { N };
     hid_t space1 = H5Screate_simple(1, dims1, NULL);
 
-    // Write datasets
-    H5Dcreate(group, "Coordinates", H5T_NATIVE_FLOAT, space3, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    H5Dwrite(H5Dopen(group, "Coordinates", H5P_DEFAULT), H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, coords.data());
+    // Write Coords & Vels (storing as float32)
+    hid_t dset_coords = H5Dcreate(group, "Coordinates", H5T_NATIVE_FLOAT, space3, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    H5Dwrite(dset_coords, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, coords.data());
+    H5Dclose(dset_coords);
 
-    H5Dcreate(group, "Velocities", H5T_NATIVE_FLOAT, space3, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    H5Dwrite(H5Dopen(group, "Velocities", H5P_DEFAULT), H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, vels.data());
+    hid_t dset_vels = H5Dcreate(group, "Velocities", H5T_NATIVE_FLOAT, space3, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    H5Dwrite(dset_vels, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, vels.data());
+    H5Dclose(dset_vels);
 
-    H5Dcreate(group, "Masses", H5T_NATIVE_FLOAT, space1, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    H5Dwrite(H5Dopen(group, "Masses", H5P_DEFAULT), H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, masses.data());
+    // --- TYPE-SAFE DIRECT WRITE ---
+    // Detect if 'real' is float or double for Masses
+    hid_t h5_real_type = (sizeof(real) == 4) ? H5T_NATIVE_FLOAT : H5T_NATIVE_DOUBLE;
+    int precision = (sizeof(real) == 4) ? 4 : 8;
 
-    H5Dcreate(group, "ParticleIDs", H5T_NATIVE_INT, space1, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    H5Dwrite(H5Dopen(group, "ParticleIDs", H5P_DEFAULT), H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, ids.data());
+    hid_t dset_masses = H5Dcreate(group, "Masses", h5_real_type, space1, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    H5Dwrite(dset_masses, h5_real_type, H5S_ALL, H5S_ALL, H5P_DEFAULT, ps.m.data());
+    H5Dclose(dset_masses);
 
-    // Cleanup
+    hid_t dset_ids = H5Dcreate(group, "ParticleIDs", H5T_NATIVE_INT, space1, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    H5Dwrite(dset_ids, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, ids.data());
+    H5Dclose(dset_ids);
+
     H5Sclose(space3);
     H5Sclose(space1);
     H5Gclose(group);
     H5Fclose(file);
 
-        // ===============================
-    // Write XDMF sidecar for ParaView
-    // ===============================
-    std::string xdmf = filename.substr(0, filename.find_last_of('.')) + ".xdmf";
-    std::ofstream xmf(xdmf);
-
-    xmf << "<?xml version=\"1.0\" ?>\n";
-    xmf << "<Xdmf Version=\"3.0\">\n";
-    xmf << "  <Domain>\n";
+    // --- XDMF SIDECAR ---
+    std::string xdmf_filename = filename.substr(0, filename.find_last_of('.')) + ".xdmf";
+    std::ofstream xmf(xdmf_filename);
+    xmf << "<?xml version=\"1.0\" ?>\n<Xdmf Version=\"3.0\">\n  <Domain>\n";
     xmf << "    <Grid Name=\"Particles\" GridType=\"Uniform\">\n";
     xmf << "      <Topology TopologyType=\"Polyvertex\" NumberOfElements=\"" << N << "\"/>\n";
     xmf << "      <Geometry GeometryType=\"XYZ\">\n";
     xmf << "        <DataItem Dimensions=\"" << N << " 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
     xmf << "          " << filename << ":/PartType1/Coordinates\n";
-    xmf << "        </DataItem>\n";
-    xmf << "      </Geometry>\n";
-
-    xmf << "      <Attribute Name=\"Velocity\" AttributeType=\"Vector\" Center=\"Node\">\n";
-    xmf << "        <DataItem Dimensions=\"" << N << " 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
-    xmf << "          " << filename << ":/PartType1/Velocities\n";
-    xmf << "        </DataItem>\n";
-    xmf << "      </Attribute>\n";
-
+    xmf << "        </DataItem>\n      </Geometry>\n";
     xmf << "      <Attribute Name=\"Mass\" AttributeType=\"Scalar\" Center=\"Node\">\n";
-    xmf << "        <DataItem Dimensions=\"" << N << "\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+    // We dynamically set the precision here to match the file
+    xmf << "        <DataItem Dimensions=\"" << N << "\" NumberType=\"Float\" Precision=\"" << precision << "\" Format=\"HDF\">\n";
     xmf << "          " << filename << ":/PartType1/Masses\n";
-    xmf << "        </DataItem>\n";
-    xmf << "      </Attribute>\n";
-
-    xmf << "      <Attribute Name=\"ID\" AttributeType=\"Scalar\" Center=\"Node\">\n";
-    xmf << "        <DataItem Dimensions=\"" << N << "\" NumberType=\"Int\" Precision=\"4\" Format=\"HDF\">\n";
-    xmf << "          " << filename << ":/PartType1/ParticleIDs\n";
-    xmf << "        </DataItem>\n";
-    xmf << "      </Attribute>\n";
-
-    xmf << "    </Grid>\n";
-    xmf << "  </Domain>\n";
-    xmf << "</Xdmf>\n";
-
+    xmf << "        </DataItem>\n      </Attribute>\n";
+    xmf << "    </Grid>\n  </Domain>\n</Xdmf>\n";
     xmf.close();
-
 }

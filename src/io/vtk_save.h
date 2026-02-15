@@ -13,54 +13,63 @@
 #include <vector>
 #include <string>
 #include <fstream>
-#include "../struct/particle.h"
+#include "struct/particle.h"
 
-inline void SaveVTK(const std::vector<Particle>& p, const std::string& filename)
+/**
+ * @brief Saves the SoA Particle database to a VTK Legacy file for ParaView.
+ */
+inline void SaveVTK(const Particle& p, const std::string& filename)
 {
     std::ofstream out(filename);
     if (!out) return;
 
-    const size_t N = p.size();
+    const size_t N = p.size(); // p is the SoA database
     out << "# vtk DataFile Version 3.0\n";
     out << "NEXT snapshot\n";
     out << "ASCII\n";
     out << "DATASET POLYDATA\n";
 
+    // Detect precision based on your build macros
     #ifdef NEXT_FP64
     constexpr const char* vtkType = "double";
-    #elif defined(NEXT_FP32)
+    #else
     constexpr const char* vtkType = "float";
     #endif
 
-    // Points
+    // --- POINTS (Coordinates) ---
     out << "POINTS " << N << " " << vtkType << "\n";
-    for (const auto& a : p)
-        out << a.x << " " << a.y << " " << a.z << "\n";
+    for (size_t i = 0; i < N; i++) {
+        out << p.x[i] << " " << p.y[i] << " " << p.z[i] << "\n";
+    }
 
-    // Vertices
-    out << "VERTICES " << N << " " << N*2 << "\n";
-    for (size_t i = 0; i < N; i++)
+    // --- VERTICES ---
+    // VTK needs topology to render points as actual pixels
+    out << "VERTICES " << N << " " << N * 2 << "\n";
+    for (size_t i = 0; i < N; i++) {
         out << "1 " << i << "\n";
+    }
 
     out << "POINT_DATA " << N << "\n";
 
-    // Type (0 for Star, 1 for DM)
-    // In ParaView, use the "Threshold" filter on this to hide DM
+    // --- Type (0 for Star, 1 for DM) ---
     out << "SCALARS type int 1\n";
     out << "LOOKUP_TABLE default\n";
-    for (const auto& a : p)
-        out << a.type << "\n";
+    for (size_t i = 0; i < N; i++) {
+        out << p.type[i] << "\n";
+    }
 
-    // Velocity Vectors
+    // --- Velocity Vectors ---
     out << "VECTORS velocity " << vtkType << "\n";
-    for (const auto& a : p)
-        out << a.vx << " " << a.vy << " " << a.vz << "\n";
+    for (size_t i = 0; i < N; i++) {
+        out << p.vx[i] << " " << p.vy[i] << " " << p.vz[i] << "\n";
+    }
 
-    // Mass
+    // --- Mass ---
     out << "SCALARS mass " << vtkType << " 1\n";
     out << "LOOKUP_TABLE default\n";
-    for (const auto& a : p)
-        out << a.m << "\n";
+    for (size_t i = 0; i < N; i++) {
+        out << p.m[i] << "\n";
+    }
 
     out.close();
 }

@@ -12,43 +12,73 @@
 #pragma once
 #include "floatdef.h"
 #include "dt/softening.h"
+#include <vector>
 #include <cmath>
+#include <algorithm>
 
-struct alignas(32) Particle {
-  real x, y, z;
-  real vx, vy, vz;
-  real m;
-  int type;
+/**
+ * @brief Structure of Arrays (SoA) container for the particle data.
+ */
+struct Particle {
+    std::vector<real> x, y, z;
+    std::vector<real> vx, vy, vz;
+    std::vector<real> ax, ay, az; // Storing for potential tree-build recycling
+    std::vector<real> m;
+    std::vector<int> type;
+
+    void resize(size_t n) {
+        x.resize(n, 0); y.resize(n, 0); z.resize(n, 0);
+        vx.resize(n, 0); vy.resize(n, 0); vz.resize(n, 0);
+        ax.assign(n, 0); ay.assign(n, 0); az.assign(n, 0);
+        m.resize(n, 0); type.resize(n, 0);
+    }
+
+    void addParticle(real px, real py, real pz, real pvx, real pvy, real pvz, real pm, int ptype) {
+        x.push_back(px); y.push_back(py); z.push_back(pz);
+        vx.push_back(pvx); vy.push_back(pvy); vz.push_back(pvz);
+        ax.push_back(0); ay.push_back(0); az.push_back(0);
+        m.push_back(pm);
+        type.push_back(ptype);
+    }
+
+    size_t size() const { return x.size(); }
+
+    void clear() {
+        x.clear(); y.clear(); z.clear();
+        vx.clear(); vy.clear(); vz.clear();
+        ax.clear(); ay.clear(); az.clear();
+        m.clear(); type.clear();
+    }
 };
 
-inline void Gravity(Particle &a, Particle &b, real dt) {
-  constexpr real G = real(1.0);
+/** * ALIAS DEFINITION
+ * This must be here for GravitySoA and Step to recognize 'ParticleSystem'
+ */
+using ParticleSystem = Particle;
 
-  real eps = pairSoftening(a.m, b.m);
+/**
+ * @brief Calculates direct gravity between two indices in the SoA system.
+ * Useful for brute-force or small-N components.
+ */
+inline void GravitySoA(ParticleSystem &ps, size_t i, size_t j, real dt) {
+    constexpr real G = real(1.0);
 
-  real dx = b.x - a.x;
-  real dy = b.y - a.y;
-  real dz = b.z - a.z;
+    real dx = ps.x[j] - ps.x[i];
+    real dy = ps.y[j] - ps.y[i];
+    real dz = ps.z[j] - ps.z[i];
 
-  real r2 = dx * dx + dy * dy + dz * dz + eps * eps;
+    real eps = pairSoftening(ps.m[i], ps.m[j]);
+    real r2 = dx * dx + dy * dy + dz * dz + eps * eps;
 
-  real invR2 = real(1.0) / r2;
-  real invR = std::sqrt(invR2);
-  real invR3 = invR * invR2;
+    real invR2 = real(1.0) / r2;
+    real invR3 = invR2 / std::sqrt(r2);
+    real f_base = G * invR3 * dt;
 
-  real ax = G * b.m * dx * invR3;
-  real ay = G * b.m * dy * invR3;
-  real az = G * b.m * dz * invR3;
+    ps.vx[i] += f_base * ps.m[j] * dx;
+    ps.vy[i] += f_base * ps.m[j] * dy;
+    ps.vz[i] += f_base * ps.m[j] * dz;
 
-  real bx = -G * a.m * dx * invR3;
-  real by = -G * a.m * dy * invR3;
-  real bz = -G * a.m * dz * invR3;
-
-  a.vx += ax * dt;
-  a.vy += ay * dt;
-  a.vz += az * dt;
-
-  b.vx += bx * dt;
-  b.vy += by * dt;
-  b.vz += bz * dt;
+    ps.vx[j] -= f_base * ps.m[i] * dx;
+    ps.vy[j] -= f_base * ps.m[i] * dy;
+    ps.vz[j] -= f_base * ps.m[i] * dz;
 }

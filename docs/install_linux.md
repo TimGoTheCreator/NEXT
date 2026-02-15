@@ -40,7 +40,7 @@ cd ..
 ```bash
 cd examples/TwoBodies
 python two_body.py
-../../next two_body.txt 8 0.01 0.1 vtu
+../../next two_body.txt 8 0.001 0.1 vtu
 ```
 
 5. **View results**

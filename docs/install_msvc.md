@@ -8,6 +8,7 @@
 - vcpkg
 - HDF5 (installed via vcpkg)
 - Python 3
+- LLVM OpenMP Component (C++ Clang-cl for v143 build tools (x64/x86)
 
 ## Steps
 
@@ -41,8 +42,13 @@ cd ..
 ```powershell
 cd examples/TwoBodies
 python two_body.py
-..\..\next.exe two_body.txt 8 0.01 0.1 vtu
 ```
+
+#### If the copy command worked (copies to project root by default in CMake):
+../../next.exe two_body.txt 8 0.001 0.1 vtu
+
+#### If your executable is in build/
+../../build/Release/next.exe two_body.txt 8 0.001 0.1 vtu
 
 5. **View results**
 
