@@ -377,3 +377,54 @@ def spiral_ic(N, A=1.0, B=1.0, arms=2, mass=1.0, noise=0.02):
         particles.append((x, y, z, vx, vy, vz, mass / N, 0))
 
     return particles
+
+def spiral_dm_ic(N, A=1.0, B=1.0, arms=2,
+              mass=1.0, dm_fraction=0.85,
+              noise=0.02, dm_scale=1.5):
+    """
+    Logarithmic spiral ICs with baryons (type=0) + DM (type=1).
+
+    r(phi) = A * log( B * tan(phi / (2*arms)) )
+
+    - N: number of baryon particles (DM will also be N)
+    - A, B: spiral parameters
+    - arms: number of spiral arms
+    - mass: total mass (baryons + DM)
+    - dm_fraction: fraction of mass in dark matter
+    - noise: positional jitter
+    - dm_scale: DM radius multiplier (DM more extended)
+    """
+
+    import math, random
+    particles = []
+
+    M_b = mass * (1 - dm_fraction)
+    M_dm = mass * dm_fraction
+
+    # -----------------------
+    # BARYONS (type = 0)
+    # -----------------------
+    for _ in range(N):
+        phi = random.uniform(0.1, math.pi * 2 * arms - 0.1)
+        r = A * math.log(B * math.tan(phi / (2 * arms)))
+
+        x = r * math.cos(phi) + noise * (random.random() - 0.5)
+        y = r * math.sin(phi) + noise * (random.random() - 0.5)
+        z = noise * (random.random() - 0.5)
+
+        particles.append((x, y, z, 0, 0, 0, M_b / N, 0))
+
+    # -----------------------
+    # DARK MATTER (type = 1)
+    # -----------------------
+    for _ in range(N):
+        phi = random.uniform(0.1, math.pi * 2 * arms - 0.1)
+        r = dm_scale * A * math.log(B * math.tan(phi / (2 * arms)))
+
+        x = r * math.cos(phi) + noise * (random.random() - 0.5)
+        y = r * math.sin(phi) + noise * (random.random() - 0.5)
+        z = noise * (random.random() - 0.5)
+
+        particles.append((x, y, z, 0, 0, 0, M_dm / N, 1))
+
+    return particles
