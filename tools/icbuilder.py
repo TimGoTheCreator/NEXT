@@ -347,45 +347,37 @@ def random_solar_system(
 
 def spiral_ic(N, A=1.0, B=1.0, arms=2, mass=1.0, noise=0.02):
     """
-    Generates particles along the logarithmic spiral:
+    Generates baryons along the Ringermacher-Mead spiral:
         r(phi) = A * log( B * tan(phi / (2*arms)) )
     - N: number of particles
     - A, B: spiral parameters
-    - arms: number of spiral arms (N in your formula)
+    - arms: number of spiral arms
     - mass: total mass
     - noise: random positional jitter
     type = 0 (baryons)
     """
     import math, random
     particles = []
-
-    for i in range(N):
-        # angle along spiral
-        phi = random.uniform(0.1, math.pi * 2 * arms - 0.1)
-
-        # radius from your formula
-        r = A * math.log(B * math.tan(phi / (2 * arms)))
-
-        # convert to Cartesian
+    count = 0
+    while count < N:
+        phi = random.uniform(0.001, math.pi * arms - 0.001)
+        val = B * math.tan(phi / (2 * arms))
+        if val <= 0:
+            continue  # skip invalid domain
+        r = A * math.log(val)
         x = r * math.cos(phi) + noise * (random.random() - 0.5)
         y = r * math.sin(phi) + noise * (random.random() - 0.5)
         z = noise * (random.random() - 0.5)
-
-        # no initial velocity (cold start)
-        vx = vy = vz = 0.0
-
-        particles.append((x, y, z, vx, vy, vz, mass / N, 0))
-
+        particles.append((x, y, z, 0, 0, 0, mass / N, 0))
+        count += 1
     return particles
 
 def spiral_dm_ic(N, A=1.0, B=1.0, arms=2,
-              mass=1.0, dm_fraction=0.85,
-              noise=0.02, dm_scale=1.5):
+                 mass=1.0, dm_fraction=0.85,
+                 noise=0.02, dm_scale=1.5):
     """
-    Logarithmic spiral ICs with baryons (type=0) + DM (type=1).
-
-    r(phi) = A * log( B * tan(phi / (2*arms)) )
-
+    Spiral ICs with baryons (type=0) and DM (type=1) using:
+        r(phi) = A * log( B * tan(phi / (2*arms)) )
     - N: number of baryon particles (DM will also be N)
     - A, B: spiral parameters
     - arms: number of spiral arms
@@ -394,37 +386,38 @@ def spiral_dm_ic(N, A=1.0, B=1.0, arms=2,
     - noise: positional jitter
     - dm_scale: DM radius multiplier (DM more extended)
     """
-
     import math, random
     particles = []
-
     M_b = mass * (1 - dm_fraction)
     M_dm = mass * dm_fraction
 
-    # -----------------------
-    # BARYONS (type = 0)
-    # -----------------------
-    for _ in range(N):
-        phi = random.uniform(0.1, math.pi * 2 * arms - 0.1)
-        r = A * math.log(B * math.tan(phi / (2 * arms)))
-
+    # Baryons
+    count = 0
+    while count < N:
+        phi = random.uniform(0.001, math.pi * arms - 0.001)
+        val = B * math.tan(phi / (2 * arms))
+        if val <= 0:
+            continue
+        r = A * math.log(val)
         x = r * math.cos(phi) + noise * (random.random() - 0.5)
         y = r * math.sin(phi) + noise * (random.random() - 0.5)
         z = noise * (random.random() - 0.5)
-
         particles.append((x, y, z, 0, 0, 0, M_b / N, 0))
+        count += 1
 
-    # -----------------------
-    # DARK MATTER (type = 1)
-    # -----------------------
-    for _ in range(N):
-        phi = random.uniform(0.1, math.pi * 2 * arms - 0.1)
-        r = dm_scale * A * math.log(B * math.tan(phi / (2 * arms)))
-
+    # Dark Matter
+    count = 0
+    while count < N:
+        phi = random.uniform(0.001, math.pi * arms - 0.001)
+        val = B * math.tan(phi / (2 * arms))
+        if val <= 0:
+            continue
+        r = dm_scale * A * math.log(val)
         x = r * math.cos(phi) + noise * (random.random() - 0.5)
         y = r * math.sin(phi) + noise * (random.random() - 0.5)
         z = noise * (random.random() - 0.5)
-
         particles.append((x, y, z, 0, 0, 0, M_dm / N, 1))
+        count += 1
 
     return particles
+
