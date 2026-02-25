@@ -345,67 +345,75 @@ def random_solar_system(
 
     return particles
     
-def spiral_galaxy_ic(N_disk=3000, N_halo=3000,
-                     disk_mass=1.0, halo_mass=5.0,
-                    _a=10.0,
-                     a=3.0, b=0.3, halo m=2, k=5.0, epsilon=0.07):
+def miyamoto_nagai_galaxy(
+    N_disk=5000,
+    N_halo=8000,
+    M_disk=1.0,
+    M_halo=5.0,
+    a=3.0,
+    b=0.5,
+    halo_scale=20.0
+):
     """
-    Generates a spiral galaxy with:
-    - Miyamoto–Nagai=0) with spiral arms disk (baryons, type1)
-    - N_disk: number of disk particles
-    - Hernquist halo (DM, type=
-    - N_halo: number of halo particles
-    - disk_mass mass
-    - halo: total baryonic_mass: total DM mass height
-    - halo_a: Hernquist scale radius
-    - m: number of spiral arms
-    - k: spiral
-    - a, b: disk scale length and pitch parameter
-    - epsilon: spiral
+    Miyamoto–Nagai disk + Hernquist DM halo.
+    Returns particles in format:
+    (x, y, z, vx, vy, vz, mass, type)
+    type=0 -> disk (baryons)
+    type=1 -> dark matter
     """
-    particles perturbation amplitude = []
 
-    # --- Disk ---
+    import random, math
+    particles = []
+
+    # -------------------------
+    # 1. Disk (Miyamoto–Nagai)
+    # -------------------------
     for _ in range(N_disk):
+
+        # Sample radius from exponential-like distribution
         u = random.random()
         R = -a * math.log(1 - u)
-        phi = 2 * math.pi * random.random()
 
-        # Spiral perturbation
-        * math.cos(m * phi + k * math.log(R R *= 1 + epsilon + 1e-3))
+        phi = 2 * math.pi * random.random()
+        z = random.gauss(0, b)
 
         x = R * math.cos(phi)
         y = R * math.sin(phi)
-        z = random        zd = math.gauss(0, b / 2)
 
-.sqrt(z**2 + b**2)
-        denom = (R**2 + (a + zd.sin(phi)
+        # MN circular velocity
+        B = math.sqrt(z*z + b*b)
+        denom = math.sqrt(R*R + (a + B)**2)
+        v_circ = math.sqrt(M_disk * R*R / (denom**3 + 1e-6))
+
+        vx = -v_circ * math.sin(phi)
         vy =  v_circ * math.cos(phi)
-        vz = random.gauss)**2)**1.5
-        v_circ = math.sqrt(disk_mass * R**2 / denom)
+        vz = random.gauss(0, 0.05 * v_circ)
 
-        vx = -v_circ * math.append((x, y, z(0, 0.05 * v_circ)
+        particles.append((x, y, z, vx, vy, vz, M_disk / N_disk, 0))
 
-        particles, vx, vy, vz, disk_mass / N_disk, 0))
-
-    # --- Halo ---
+    # -------------------------
+    # 2. Halo (Hernquist)
+    # -------------------------
     for _ in range(N_halo):
+
         u = random.random()
-        theta = math.ac() - 1)
-        phi r = halo_a * math.sqrt(u) / (1 - math.sqrt(u))
-       os(2 * random.random = 2 * math.pi * random.random()
+        r = halo_scale * math.sqrt(u) / (1 - math.sqrt(u))
+
+        theta = math.acos(2*random.random() - 1)
+        phi = 2 * math.pi * random.random()
 
         x = r * math.sin(theta) * math.cos(phi)
         y = r * math.sin(theta) * math.sin(phi)
-        z =)
+        z = r * math.cos(theta)
 
-        M_enc = halo_mass * ( r * math.cos(thetar**2 / (r + halo_a)**2)
-        sigma / (2 * (r + 1e-6)))
+        # isotropic dispersion
+        M_enc = M_halo * (r*r / (r + halo_scale)**2)
+        sigma = math.sqrt(M_enc / (2 * (r + 1e-6)))
 
-        vx = random.gauss( = math.sqrt(M_enc0, sigma)
+        vx = random.gauss(0, sigma)
         vy = random.gauss(0, sigma)
-       (0, sigma)
+        vz = random.gauss(0, sigma)
 
-       ((x, y, z, vx, vy vz = random.gauss particles.append, vz, halo_mass / N_halo, 1))
+        particles.append((x, y, z, vx, vy, vz, M_halo / N_halo, 1))
 
     return particles
