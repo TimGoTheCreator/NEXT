@@ -344,3 +344,36 @@ def random_solar_system(
                 particles.append((mx, my, mz, mvx, mvy, mvz, mm, 0))
 
     return particles
+
+def spiral_ic(N, A=1.0, B=1.0, arms=2, mass=1.0, noise=0.02):
+    """
+    Generates particles along the logarithmic spiral:
+        r(phi) = A * log( B * tan(phi / (2*arms)) )
+    - N: number of particles
+    - A, B: spiral parameters
+    - arms: number of spiral arms (N in your formula)
+    - mass: total mass
+    - noise: random positional jitter
+    type = 0 (baryons)
+    """
+    import math, random
+    particles = []
+
+    for i in range(N):
+        # angle along spiral
+        phi = random.uniform(0.1, math.pi * 2 * arms - 0.1)
+
+        # radius from your formula
+        r = A * math.log(B * math.tan(phi / (2 * arms)))
+
+        # convert to Cartesian
+        x = r * math.cos(phi) + noise * (random.random() - 0.5)
+        y = r * math.sin(phi) + noise * (random.random() - 0.5)
+        z = noise * (random.random() - 0.5)
+
+        # no initial velocity (cold start)
+        vx = vy = vz = 0.0
+
+        particles.append((x, y, z, vx, vy, vz, mass / N, 0))
+
+    return particles
