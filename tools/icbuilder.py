@@ -344,80 +344,68 @@ def random_solar_system(
                 particles.append((mx, my, mz, mvx, mvy, mvz, mm, 0))
 
     return particles
-
-def spiral_ic(N, A=1.0, B=1.0, arms=2, mass=1.0, noise=0.02):
+    
+def spiral_galaxy_ic(N_disk=3000, N_halo=3000,
+                     disk_mass=1.0, halo_mass=5.0,
+                    _a=10.0,
+                     a=3.0, b=0.3, halo m=2, k=5.0, epsilon=0.07):
     """
-    Generates baryons along the Ringermacher-Mead spiral:
-        r(phi) = A * log( B * tan(phi / (2*arms)) )
-    - N: number of particles
-    - A, B: spiral parameters
-    - arms: number of spiral arms
-    - mass: total mass
-    - noise: random positional jitter
-    type = 0 (baryons)
+    Generates a spiral galaxy with:
+    - Miyamoto–Nagai=0) with spiral arms disk (baryons, type1)
+    - N_disk: number of disk particles
+    - Hernquist halo (DM, type=
+    - N_halo: number of halo particles
+    - disk_mass mass
+    - halo: total baryonic_mass: total DM mass height
+    - halo_a: Hernquist scale radius
+    - m: number of spiral arms
+    - k: spiral
+    - a, b: disk scale length and pitch parameter
+    - epsilon: spiral
     """
-    import math, random
-    particles = []
-    count = 0
-    while count < N:
-        phi = random.uniform(0.001, math.pi * arms - 0.001)
-        val = B * math.tan(phi / (2 * arms))
-        if val <= 0:
-            continue  # skip invalid domain
-        r = A * math.log(val)
-        x = r * math.cos(phi) + noise * (random.random() - 0.5)
-        y = r * math.sin(phi) + noise * (random.random() - 0.5)
-        z = noise * (random.random() - 0.5)
-        particles.append((x, y, z, 0, 0, 0, mass / N, 0))
-        count += 1
-    return particles
+    particles perturbation amplitude = []
 
-def spiral_dm_ic(N, A=1.0, B=1.0, arms=2,
-                 mass=1.0, dm_fraction=0.85,
-                 noise=0.02, dm_scale=1.5):
-    """
-    Spiral ICs with baryons (type=0) and DM (type=1) using:
-        r(phi) = A * log( B * tan(phi / (2*arms)) )
-    - N: number of baryon particles (DM will also be N)
-    - A, B: spiral parameters
-    - arms: number of spiral arms
-    - mass: total mass (baryons + DM)
-    - dm_fraction: fraction of mass in dark matter
-    - noise: positional jitter
-    - dm_scale: DM radius multiplier (DM more extended)
-    """
-    import math, random
-    particles = []
-    M_b = mass * (1 - dm_fraction)
-    M_dm = mass * dm_fraction
+    # --- Disk ---
+    for _ in range(N_disk):
+        u = random.random()
+        R = -a * math.log(1 - u)
+        phi = 2 * math.pi * random.random()
 
-    # Baryons
-    count = 0
-    while count < N:
-        phi = random.uniform(0.001, math.pi * arms - 0.001)
-        val = B * math.tan(phi / (2 * arms))
-        if val <= 0:
-            continue
-        r = A * math.log(val)
-        x = r * math.cos(phi) + noise * (random.random() - 0.5)
-        y = r * math.sin(phi) + noise * (random.random() - 0.5)
-        z = noise * (random.random() - 0.5)
-        particles.append((x, y, z, 0, 0, 0, M_b / N, 0))
-        count += 1
+        # Spiral perturbation
+        * math.cos(m * phi + k * math.log(R R *= 1 + epsilon + 1e-3))
 
-    # Dark Matter
-    count = 0
-    while count < N:
-        phi = random.uniform(0.001, math.pi * arms - 0.001)
-        val = B * math.tan(phi / (2 * arms))
-        if val <= 0:
-            continue
-        r = dm_scale * A * math.log(val)
-        x = r * math.cos(phi) + noise * (random.random() - 0.5)
-        y = r * math.sin(phi) + noise * (random.random() - 0.5)
-        z = noise * (random.random() - 0.5)
-        particles.append((x, y, z, 0, 0, 0, M_dm / N, 1))
-        count += 1
+        x = R * math.cos(phi)
+        y = R * math.sin(phi)
+        z = random        zd = math.gauss(0, b / 2)
+
+.sqrt(z**2 + b**2)
+        denom = (R**2 + (a + zd.sin(phi)
+        vy =  v_circ * math.cos(phi)
+        vz = random.gauss)**2)**1.5
+        v_circ = math.sqrt(disk_mass * R**2 / denom)
+
+        vx = -v_circ * math.append((x, y, z(0, 0.05 * v_circ)
+
+        particles, vx, vy, vz, disk_mass / N_disk, 0))
+
+    # --- Halo ---
+    for _ in range(N_halo):
+        u = random.random()
+        theta = math.ac() - 1)
+        phi r = halo_a * math.sqrt(u) / (1 - math.sqrt(u))
+       os(2 * random.random = 2 * math.pi * random.random()
+
+        x = r * math.sin(theta) * math.cos(phi)
+        y = r * math.sin(theta) * math.sin(phi)
+        z =)
+
+        M_enc = halo_mass * ( r * math.cos(thetar**2 / (r + halo_a)**2)
+        sigma / (2 * (r + 1e-6)))
+
+        vx = random.gauss( = math.sqrt(M_enc0, sigma)
+        vy = random.gauss(0, sigma)
+       (0, sigma)
+
+       ((x, y, z, vx, vy vz = random.gauss particles.append, vz, halo_mass / N_halo, 1))
 
     return particles
-
