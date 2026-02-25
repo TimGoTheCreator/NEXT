@@ -348,42 +348,48 @@ def random_solar_system(
 def miyamoto_nagai_galaxy(
     N_disk=5000,
     N_halo=8000,
+    N_bulge=2000,
     M_disk=1.0,
     M_halo=5.0,
-    a=3.0,
-    b=0.5,
-    halo_scale=20.0
+    M_bulge=0.5,
+    a=3.0,          # MN radial scale
+    b=0.5,          # MN vertical scale
+    halo_scale=20.0,
+    bulge_scale=0.5,
+    spiral_m=2,     # number of arms
+    spiral_eps=0.06,
+    spiral_k=4.0
 ):
     """
-    Miyamoto–Nagai disk + Hernquist DM halo.
+    Miyamoto–Nagai disk + Hernquist bulge + Hernquist DM halo.
     Returns particles in format:
-    (x, y, z, vx, vy, vz, mass, type)
-    type=0 -> disk (baryons)
-    type=1 -> dark matter
+      (x, y, z, vx, vy, vz, mass, type)
+    type=0 -> baryons (disk + bulge)
+    type=1 -> dark matter (halo)
     """
-
     import random, math
     particles = []
 
     # -------------------------
-    # 1. Disk (Miyamoto–Nagai)
+    # 1. Disk — Miyamoto–Nagai
     # -------------------------
     for _ in range(N_disk):
-
-        # Sample radius from exponential-like distribution
+        # radius sampling (exponential-like)
         u = random.random()
         R = -a * math.log(1 - u)
-
         phi = 2 * math.pi * random.random()
         z = random.gauss(0, b)
 
-        x = R * math.cos(phi)
-        y = R * math.sin(phi)
+        # spiral arm perturbation
+        Rp = R * (1 + spiral_eps * math.cos(spiral_m * phi + spiral_k * math.log(R + 1e-6)))
+
+        x = Rp * math.cos(phi)
+        y = Rp * math.sin(phi)
 
         # MN circular velocity
         B = math.sqrt(z*z + b*b)
-        denom = math.sqrt(R*R + (a + B)**2)
-        v_circ = math.sqrt(M_disk * R*R / (denom**3 + 1e-6))
+        denom = math.sqrt(Rp*Rp + (a + B)**2)
+        v_circ = math.sqrt(M_disk * Rp*Rp / (denom**3 + 1e-6))
 
         vx = -v_circ * math.sin(phi)
         vy =  v_circ * math.cos(phi)
@@ -392,10 +398,32 @@ def miyamoto_nagai_galaxy(
         particles.append((x, y, z, vx, vy, vz, M_disk / N_disk, 0))
 
     # -------------------------
-    # 2. Halo (Hernquist)
+    # 2. Bulge — Hernquist (baryons)
+    # -------------------------
+    for _ in range(N_bulge):
+        u = random.random()
+        r = bulge_scale * math.sqrt(u) / (1 - math.sqrt(u))
+
+        theta = math.acos(2*random.random() - 1)
+        phi = 2 * math.pi * random.random()
+
+        x = r * math.sin(theta) * math.cos(phi)
+        y = r * math.sin(theta) * math.sin(phi)
+        z = r * math.cos(theta)
+
+        M_enc = M_bulge * (r*r / (r + bulge_scale)**2)
+        sigma = math.sqrt(M_enc / (2 * (r + 1e-6)))
+
+        vx = random.gauss(0, sigma)
+        vy = random.gauss(0, sigma)
+        vz = random.gauss(0, sigma)
+
+        particles.append((x, y, z, vx, vy, vz, M_bulge / N_bulge, 0))
+
+    # -------------------------
+    # 3. Halo — Hernquist (DM)
     # -------------------------
     for _ in range(N_halo):
-
         u = random.random()
         r = halo_scale * math.sqrt(u) / (1 - math.sqrt(u))
 
@@ -406,7 +434,6 @@ def miyamoto_nagai_galaxy(
         y = r * math.sin(theta) * math.sin(phi)
         z = r * math.cos(theta)
 
-        # isotropic dispersion
         M_enc = M_halo * (r*r / (r + halo_scale)**2)
         sigma = math.sqrt(M_enc / (2 * (r + 1e-6)))
 
