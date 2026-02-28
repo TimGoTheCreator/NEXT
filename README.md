@@ -20,7 +20,7 @@ The generator script is located in tools/icbuilder.py
 FP32, FP64
 
 ### NEXT Multi-threading
-NEXT Uses OpenMP with "#pragma omp parallel for" for parallelization.
+NEXT Uses OpenMP and MPI to achieve multi-threaded workloads across cores (openmp) and computers (mpi)
 
 ### NEXT uses a 3D Newtonian gravity formulation with:
 - reduced division count (3-6x faster on avg.) 
