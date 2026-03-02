@@ -19,9 +19,15 @@
 #ifdef NEXT_MPI
     #include <mpi.h>
 #endif
+#include <chrono>
+#include <fstream>
 
 inline void Step(ParticleSystem &ps, real dt) {
     if (ps.size() == 0) return;
+
+    #ifdef NEXT_BENCHMARK
+    auto t_start = std::chrono::high_resolution_clock::now();
+    #endif
 
     const real theta = real(0.5);
     const real half  = dt * real(0.5);
@@ -181,4 +187,18 @@ inline void Step(ParticleSystem &ps, real dt) {
         MPI_Waitall(3, reqs4, MPI_STATUSES_IGNORE);
 #endif
     }
+
+#ifdef NEXT_BENCHMARK
+    auto t_end = std::chrono::high_resolution_clock::now();
+    double elapsed_ms = std::chrono::duration<double, std::milli>(t_end - t_start).count();
+
+    int rank = 0;
+#ifdef NEXT_MPI
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+#endif
+    if (rank == 0) {
+        std::ofstream log("log.txt", std::ios::app);
+        log << "Step time: " << elapsed_ms << " ms" << std::endl;
+    }
+#endif
 }
