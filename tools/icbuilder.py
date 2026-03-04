@@ -444,3 +444,57 @@ def miyamoto_nagai_galaxy(
         particles.append((x, y, z, vx, vy, vz, M_halo / N_halo, 1))
 
     return particles
+
+def NewBigBang(N=40000, base_mass=8.5e9,
+              scatter=0.0, dm_fraction=0.0,
+              dm_N=12000, max_dist=20.0):
+    """
+    Big Bang initial conditions.
+    type=0 baryons, type=1 DM
+    """
+    particles = []
+
+    # Visible matter
+    for _ in range(N):
+        angle = 2 * math.pi * random.random()
+        r = math.sqrt(random.random()) * max_dist + 1.0
+
+        x = r * math.cos(angle) + random.uniform(-15, 15)
+        y = r * math.sin(angle) + random.uniform(-15, 15)
+        z = 0.0
+
+        dx, dy = x, y
+        norm = math.sqrt(dx*dx + dy*dy)
+        nx, ny = dx/norm, dy/norm
+
+        speed = 300.0 * (r / 35.0)
+        vx, vy, vz = nx * speed, ny * speed, 0.0
+
+        rand_mass = 1.0 + (random.random() * 2.0 - 1.0) * scatter
+        m = (base_mass / N) * rand_mass
+
+        particles.append((x, y, z, vx, vy, vz, m, 0))
+
+    # Dark matter
+    if dm_fraction > 0.0:
+        for _ in range(dm_N):
+            angle = 2 * math.pi * random.random()
+            r = math.sqrt(random.random()) * max_dist + 1.0
+
+            x = r * math.cos(angle) + random.uniform(-15, 15)
+            y = r * math.sin(angle) + random.uniform(-15, 15)
+            z = 0.0
+
+            dx, dy = x, y
+            norm = math.sqrt(dx*dx + dy*dy)
+            nx, ny = dx/norm, dy/norm
+
+            speed = 300.0 * (r / 35.0)
+            vx, vy, vz = nx * speed, ny * speed, 0.0
+
+            rand_mass = 1.0 + (random.random() * 2.0 - 1.0) * scatter
+            m = (1.416e11 / dm_N) * rand_mass
+
+            particles.append((x, y, z, vx, vy, vz, m, 1))
+
+    return particles
