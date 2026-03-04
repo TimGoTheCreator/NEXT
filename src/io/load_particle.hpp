@@ -34,13 +34,32 @@ void LoadPartType(hid_t file,
 
     hsize_t dims[2];
     H5Sget_simple_extent_dims(space_coords, dims, NULL);
-    size_t N = dims[0]; 
+    size_t N = dims[0];
 
-    hid_t dset_vels = H5Dopen(file, (group + "/Velocities").c_str(), H5P_DEFAULT);
+    // Temporary buffers
+    std::vector<float> coords(N * 3);
+    std::vector<float> vels(N * 3);
+
+    // Read Coordinates
     H5Dread(dset_coords, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, coords.data());
+
+    // Read Velocities
+    hid_t dset_vels = H5Dopen(file, (group + "/Velocities").c_str(), H5P_DEFAULT);
     H5Dread(dset_vels, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, vels.data());
     H5Dclose(dset_vels);
 
+    // Reserve space
+    size_t current_size = p.x.size();
+    p.x.resize(current_size + N);
+    p.y.resize(current_size + N);
+    p.z.resize(current_size + N);
+    p.vx.resize(current_size + N);
+    p.vy.resize(current_size + N);
+    p.vz.resize(current_size + N);
+    p.m.resize(current_size + N);
+    p.type.resize(current_size + N);
+
+    // Read Masses with type check
     hid_t dset_masses = H5Dopen(file, (group + "/Masses").c_str(), H5P_DEFAULT);
     hid_t dtype = H5Dget_type(dset_masses);
 
@@ -61,20 +80,8 @@ void LoadPartType(hid_t file,
     H5Tclose(dtype);
     H5Dclose(dset_masses);
 
-
-    // --- RE-FILL SoA LANES ---
-    // We reserve space to avoid multiple reallocations
-    size_t current_size = p.x.size();
-    p.x.resize(current_size + N);
-    p.y.resize(current_size + N);
-    p.z.resize(current_size + N);
-    p.vx.resize(current_size + N);
-    p.vy.resize(current_size + N);
-    p.vz.resize(current_size + N);
-    p.m.resize(current_size + N);
-    p.type.resize(current_size + N);
-
-    for (size_t i = 0; i < N; i++) {
+    // Fill SoA lanes
+    for (size_t i = 0; i < N; ++i) {
         size_t idx = current_size + i;
         p.x[idx]  = coords[3*i+0];
         p.y[idx]  = coords[3*i+1];
@@ -82,15 +89,13 @@ void LoadPartType(hid_t file,
         p.vx[idx] = vels[3*i+0];
         p.vy[idx] = vels[3*i+1];
         p.vz[idx] = vels[3*i+2];
-        p.m[idx]  = masses[i];
         p.type[idx] = internalType;
     }
 
     // Cleanup
     H5Dclose(dset_coords);
-    H5Dclose(dset_vels);
-    H5Dclose(dset_masses);
     H5Sclose(space_coords);
+
 }
 
 /**
