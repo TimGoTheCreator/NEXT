@@ -445,7 +445,7 @@ def miyamoto_nagai_galaxy(
 
     return particles
 
-def NewBigBang(N=40000, base_mass=8.5e9,
+def newBigBang(N=40000, base_mass=8.5e9,
               scatter=0.0, dm_fraction=0.0,
               dm_N=12000, max_dist=20.0):
     """
