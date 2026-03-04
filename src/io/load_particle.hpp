@@ -36,19 +36,31 @@ void LoadPartType(hid_t file,
     H5Sget_simple_extent_dims(space_coords, dims, NULL);
     size_t N = dims[0]; 
 
-    // Temporary buffers for HDF5 read
-    std::vector<float> coords(N * 3);
-    std::vector<float> vels(N * 3);
-    std::vector<float> masses(N);
-
-    // Read everything from HDF5
-    H5Dread(dset_coords, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, coords.data());
-    
     hid_t dset_vels = H5Dopen(file, (group + "/Velocities").c_str(), H5P_DEFAULT);
+    H5Dread(dset_coords, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, coords.data());
     H5Dread(dset_vels, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, vels.data());
-    
+    H5Dclose(dset_vels);
+
     hid_t dset_masses = H5Dopen(file, (group + "/Masses").c_str(), H5P_DEFAULT);
-    H5Dread(dset_masses, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, masses.data());
+    hid_t dtype = H5Dget_type(dset_masses);
+
+    if (H5Tequal(dtype, H5T_NATIVE_FLOAT)) {
+        std::vector<float> masses_f(N);
+        H5Dread(dset_masses, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, masses_f.data());
+        for (size_t i = 0; i < N; ++i)
+            p.m[current_size + i] = masses_f[i];
+    } else if (H5Tequal(dtype, H5T_NATIVE_DOUBLE)) {
+        std::vector<double> masses_d(N);
+        H5Dread(dset_masses, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, masses_d.data());
+        for (size_t i = 0; i < N; ++i)
+            p.m[current_size + i] = static_cast<real>(masses_d[i]);
+    } else {
+        throw std::runtime_error("Unsupported Masses datatype");
+    }
+
+    H5Tclose(dtype);
+    H5Dclose(dset_masses);
+
 
     // --- RE-FILL SoA LANES ---
     // We reserve space to avoid multiple reallocations
