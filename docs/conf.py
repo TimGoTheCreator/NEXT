@@ -1,8 +1,8 @@
 # Configuration file for readthedocs.
 
 project = 'NEXT'
-author = 'Timofey Zakharchuk'
-release = '2026.02.03'
+author = 'Timofiy Zakharchuk'
+release = '2026.08.12'
 
 extensions = [
     "myst_parser", 

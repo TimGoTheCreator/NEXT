@@ -1,48 +1,43 @@
-# 🍏 Building NEXT on macOS
+# Building NEXT on macOS
+
+This guide covers building **NEXT** on macOS using **Clang** / **Apple Clang** or **GCC** via **Homebrew**.
+
+---
 
 ## Prerequisites
 
-- Git
-- CMake ≥ 3.10
-- Clang
-- OpenMP
-- HDF5
-- Python 3
+- **Homebrew**
+- **Git**
+- **CMake** (>= 3.10)
+- **Python 3**
 
-## Steps
+---
 
-1. **Clone the repository**
+## Build Steps
+
+### 1. Install Dependencies using Homebrew
+
+```bash
+brew update
+brew install cmake libomp hdf5 python
+```
+
+### 2. Clone & Build NEXT
 
 ```bash
 git clone https://github.com/TimGoTheCreator/NEXT.git
 cd NEXT
+
+cmake -B build -S .
+cmake --build build --config Release
 ```
 
-2. **Install dependencies using Homebrew**
+---
 
-```bash
-brew update
-brew install llvm libomp hdf5 python
-```
-
-3. **Build NEXT**
-
-```bash
-mkdir build
-cd build
-cmake .. -DCMAKE_C_COMPILER=/opt/homebrew/opt/llvm/bin/clang -DCMAKE_CXX_COMPILER=/opt/homebrew/opt/llvm/bin/clang++
-cmake --build . --config Release
-cd ..
-```
-
-4. **Run a built-in example simulation**
+## Running an Example Simulation
 
 ```bash
 cd examples/TwoBodies
-python two_body.py
-../../next two_body.txt 8 0.01 0.1 vtu
+python3 two_body.py
+../../next two_body.txt 8 0.001 0.1 vtu 50
 ```
-
-5. **View results**
-
-Open the `.vtu` output in ParaView.

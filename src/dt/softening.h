@@ -10,16 +10,17 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
-#include "floatdef.h"
-#include <cmath>
 #include <algorithm>
+#include <cmath>
+
+#include "floatdef.h"
 
 /**
  * @brief Softening for Barnes-Hut node interactions.
  * Note: nodeMass and dist are passed as individual reals from the SoA arrays.
  */
 inline real nextSoftening(real nodeSize, real nodeMass, real dist) {
-    // std::pow(x, 1/3) or std::cbrt is slow. 
+    // std::pow(x, 1/3) or std::cbrt is slow.
     // In SoA loops, this is often the bottleneck.
     real eps_size = nodeSize * real(0.015);
     real eps_mass = std::cbrt(nodeMass) * real(0.002);

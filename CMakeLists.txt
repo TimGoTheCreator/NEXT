@@ -1,149 +1,171 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.16)
 
-project(NEXT)
+project(NEXT
+    VERSION 2026.08.12
+    DESCRIPTION "Newtonian EXact Trajectories: Multi-Threaded & Distributed N-Body Solver"
+    LANGUAGES C CXX
+)
 
-# ============================
-# Detect compiler environment
-# ============================
-if (MINGW)
-    message(STATUS "Detected MinGW GCC — using MinGW settings")
-    set(USING_MINGW TRUE)
-elseif (MSVC)
-    message(STATUS "Detected MSVC — using MSVC settings")
-    set(USING_MSVC TRUE)
-elseif (APPLE)
-    message(STATUS "Detected macOS — limited MPI support")
-    set(USING_APPLE TRUE)
-elseif (UNIX)
-    message(STATUS "Detected Linux/UNIX — using standard settings")
-    set(USING_UNIX TRUE)
-endif()
+# ==============================================================================
+# C++ Standard Requirements
+# ==============================================================================
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
-# ============================
-# Options
-# ============================
-option(NEXT_FP32 "Use 32-bit floats (scalar)" OFF)
-option(NEXT_FP64 "Use 64-bit floats (scalar)" ON)
-option(NEXT_MPI "Enable MPI support" OFF)
+# ==============================================================================
+# Build Options & HPC Features
+# ==============================================================================
+option(NEXT_FP32 "Use 32-bit floating point precision (FP32)" OFF)
+option(NEXT_FP64 "Use 64-bit floating point precision (FP64)" ON)
+option(NEXT_MPI "Enable MPI distributed memory parallelism" OFF)
+option(NEXT_NATIVE_ARCH "Enable architecture-native host CPU optimizations (-march=native)" OFF)
+option(NEXT_ENABLE_LTO "Enable Link-Time Optimization / Interprocedural Optimization" OFF)
+option(ENABLE_VEC_REPORT "Enable compiler vectorization reports" OFF)
+option(NEXT_COPY_TO_CMAKE_SOURCE_DIR "Copy final executable to CMake source directory" ON)
 
-option(NEXT_COPY_TO_CMAKE_SOURCE_DIR "Copy final executable from build dir to source dir" ON)
-
-# ============================
-# Precision modes
-# ============================
-set(NEXT_MODES NEXT_FP32 NEXT_FP64)
-
+# ==============================================================================
+# Precision Mode Validation
+# ==============================================================================
 set(NEXT_MODE_COUNT 0)
-foreach(m ${NEXT_MODES})
-    if(${m})
-        math(EXPR NEXT_MODE_COUNT "${NEXT_MODE_COUNT} + 1")
-    endif()
-endforeach()
+if(NEXT_FP32)
+    math(EXPR NEXT_MODE_COUNT "${NEXT_MODE_COUNT} + 1")
+endif()
+if(NEXT_FP64)
+    math(EXPR NEXT_MODE_COUNT "${NEXT_MODE_COUNT} + 1")
+endif()
 
 if(NEXT_MODE_COUNT EQUAL 0)
-    message(FATAL_ERROR "You must enable NEXT_FP64 or NEXT_FP32.")
+    message(FATAL_ERROR "[NEXT CMake Error] You must enable either NEXT_FP64 or NEXT_FP32.")
 elseif(NEXT_MODE_COUNT GREATER 1)
-    message(FATAL_ERROR "Enable only one precision mode.")
+    message(FATAL_ERROR "[NEXT CMake Error] Conflict: Select only one precision mode (NEXT_FP64 or NEXT_FP32).")
 endif()
 
-if(NEXT_FP32)
-    add_compile_definitions(NEXT_FP32)
-elseif(NEXT_FP64)
-    add_compile_definitions(NEXT_FP64)
-endif()
-
-# ============================
-# Includes and sources
-# ============================
-include_directories(${CMAKE_SOURCE_DIR}/include)
-include_directories(${CMAKE_SOURCE_DIR}/src)
+# ==============================================================================
+# Target Executable & Source Definitions
+# ==============================================================================
 file(GLOB_RECURSE SRC_FILES ${CMAKE_SOURCE_DIR}/src/*.cpp)
 file(GLOB ARGPARSE_FILES ${CMAKE_SOURCE_DIR}/argparse/*.cpp)
 
 add_executable(next ${SRC_FILES} ${ARGPARSE_FILES})
 
-# ============================
-# Vectorization reports
-# ============================
-option(ENABLE_VEC_REPORT "Enable compiler vectorization reports" OFF)
+target_include_directories(next PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_SOURCE_DIR}/argparse
+)
 
-if(ENABLE_VEC_REPORT)
-    if(CMAKE_CXX_COMPILER_ID MATCHES "IntelLLVM")
-        target_compile_options(next PRIVATE -O3 -Rpass=loop-vectorize -Rpass-missed=loop-vectorize)
-    elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-        target_compile_options(next PRIVATE -O3 -fopt-info-vec-optimized -fopt-info-vec-missed)
-    elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-        target_compile_options(next PRIVATE -O3 -Rpass=loop-vectorize -Rpass-missed=loop-vectorize)
+# ==============================================================================
+# Precision Compile Definitions
+# ==============================================================================
+if(NEXT_FP32)
+    target_compile_definitions(next PRIVATE NEXT_FP32)
+    message(STATUS "[NEXT HPC] Precision: FP32 (Single Precision)")
+elseif(NEXT_FP64)
+    target_compile_definitions(next PRIVATE NEXT_FP64)
+    message(STATUS "[NEXT HPC] Precision: FP64 (Double Precision)")
+endif()
+
+# ==============================================================================
+# Compiler Optimization & Warning Flags
+# ==============================================================================
+if(MSVC)
+    target_compile_options(next PRIVATE
+        /W4
+        /O2
+        /permissive-
+    )
+else()
+    target_compile_options(next PRIVATE
+        -Wall
+        -Wextra
+        -Wpedantic
+        -O3
+    )
+
+    if(NEXT_NATIVE_ARCH)
+        target_compile_options(next PRIVATE -march=native)
+        message(STATUS "[NEXT HPC] Host CPU tuning enabled (-march=native)")
     endif()
 endif()
 
-# ============================
-# OpenMP
-# ============================
+# ==============================================================================
+# Link-Time Optimization (LTO / IPO)
+# ==============================================================================
+if(NEXT_ENABLE_LTO)
+    include(CheckIPOSupported)
+    check_ipo_supported(RESULT ipo_supported OUTPUT ipo_error)
+    if(ipo_supported)
+        set_property(TARGET next PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+        message(STATUS "[NEXT HPC] Interprocedural Optimization (LTO/IPO) enabled")
+    else()
+        message(WARNING "[NEXT HPC] IPO/LTO requested but not supported: ${ipo_error}")
+    endif()
+endif()
+
+# ==============================================================================
+# Compiler Vectorization Reports
+# ==============================================================================
+if(ENABLE_VEC_REPORT)
+    if(CMAKE_CXX_COMPILER_ID MATCHES "IntelLLVM")
+        target_compile_options(next PRIVATE -Rpass=loop-vectorize -Rpass-missed=loop-vectorize)
+    elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        target_compile_options(next PRIVATE -fopt-info-vec-optimized -fopt-info-vec-missed)
+    elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+        target_compile_options(next PRIVATE -Rpass=loop-vectorize -Rpass-missed=loop-vectorize)
+    endif()
+    message(STATUS "[NEXT HPC] Compiler vectorization reporting enabled")
+endif()
+
+# ==============================================================================
+# OpenMP Shared-Memory Multi-Threading
+# ==============================================================================
 find_package(OpenMP QUIET)
 if(OpenMP_CXX_FOUND)
-    message(STATUS "OpenMP detected — enabling multithreading.")
+    message(STATUS "[NEXT HPC] OpenMP detected - enabling multi-threading")
     if(MSVC)
         target_compile_options(next PRIVATE /openmp:llvm)
     else()
         target_link_libraries(next PRIVATE OpenMP::OpenMP_CXX)
     endif()
 else()
-    message(STATUS "OpenMP not found — building in single-threaded mode.")
+    message(STATUS "[NEXT HPC] OpenMP not found - building single-threaded")
 endif()
 
-# ============================
-# MPI detection
-# ============================
+# ==============================================================================
+# MPI Distributed Parallelism
+# ==============================================================================
 if(NEXT_MPI)
-    if(USING_UNIX)
-        # Linux: standard OpenMPI
-        find_package(MPI REQUIRED)
-        message(STATUS "MPI (OpenMPI) detected — enabling distributed memory parallelism.")
-        target_compile_definitions(next PRIVATE NEXT_MPI)
-        target_link_libraries(next PRIVATE MPI::MPI_CXX)
-
-    elseif(USING_MSVC OR USING_MINGW)
-        # Windows: Microsoft MPI
-        find_package(MPI REQUIRED)
-        message(STATUS "MPI (MS-MPI) detected — enabling distributed memory parallelism.")
-        target_compile_definitions(next PRIVATE NEXT_MPI)
-        target_link_libraries(next PRIVATE MPI::MPI_CXX)
-
-    elseif(USING_APPLE)
-        message(WARNING "MPI requested, but macOS does not ship MPI by default. Please install OpenMPI via Homebrew (brew install open-mpi).")
-        find_package(MPI REQUIRED)
-        target_compile_definitions(next PRIVATE NEXT_MPI)
-        target_link_libraries(next PRIVATE MPI::MPI_CXX)
-    endif()
+    find_package(MPI REQUIRED)
+    message(STATUS "[NEXT HPC] MPI detected - enabling cluster distribution")
+    target_compile_definitions(next PRIVATE NEXT_MPI)
+    target_link_libraries(next PRIVATE MPI::MPI_CXX)
 endif()
 
-# ============================
-# HDF5 detection
-# ============================
-if (USING_MSVC AND DEFINED ENV{HDF5_DIR})
+# ==============================================================================
+# HDF5 I/O Library Detection
+# ==============================================================================
+if(MSVC AND DEFINED ENV{HDF5_DIR})
     set(HDF5_ROOT "$ENV{HDF5_DIR}")
     set(CMAKE_PREFIX_PATH "${HDF5_ROOT};${CMAKE_PREFIX_PATH}")
 endif()
 
-if (USING_MINGW)
-    set(CMAKE_PREFIX_PATH "C:/tools/msys64/mingw64")
-    message(STATUS "Using MSYS2 MinGW HDF5 path: ${CMAKE_PREFIX_PATH}")
+if(MINGW)
+    set(CMAKE_PREFIX_PATH "C:/tools/msys64/mingw64;${CMAKE_PREFIX_PATH}")
 endif()
 
 find_package(HDF5 REQUIRED COMPONENTS C HL)
-
-include_directories(${HDF5_INCLUDE_DIRS})
+target_include_directories(next PRIVATE ${HDF5_INCLUDE_DIRS})
 target_link_libraries(next PRIVATE ${HDF5_LIBRARIES})
 
-# ============================
-# Optional: Copy executable to source dir
-# ============================
+# ==============================================================================
+# Post-Build Executable Copy
+# ==============================================================================
 if(NEXT_COPY_TO_CMAKE_SOURCE_DIR)
     add_custom_command(TARGET next POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy
                 $<TARGET_FILE:next>
                 ${CMAKE_SOURCE_DIR}/$<TARGET_FILE_NAME:next>
-        COMMENT "Copying executable to CMake source directory"
+        COMMENT "[NEXT Build] Copying executable to source directory"
     )
 endif()

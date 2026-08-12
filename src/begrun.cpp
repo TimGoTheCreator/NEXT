@@ -9,35 +9,36 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <omp.h>
+
+#include <fstream>
+#include <iostream>
+#include <string>
+#include <vector>
+
 #include "../argparse/argparse.hpp"
 #include "dt/adaptive.h"
 #include "floatdef.h"
 #include "gravity/step.h"
+#include "io/hdf5_save.h"
 #include "io/load_particle.hpp"
 #include "io/vtk_save.h"
 #include "io/vtu_save.h"
-#include "io/hdf5_save.h"
-#include <fstream>
-#include <iostream>
-#include <omp.h>
-#include <string>
-#include <vector>
 #ifdef NEXT_MPI
-  #include <mpi.h>
+#include <mpi.h>
 #endif
 #include "hdf5.h"
-
 
 using next::OutputFormat;
 
 // Helper: only rank 0, thread 0 prints
-inline void log_once(int rank, const std::string &msg) {
+inline void log_once(int rank, const std::string& msg) {
     if (rank == 0 && omp_get_thread_num() == 0) {
         std::cout << msg << std::endl;
     }
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
     int rank = 0;
     int size = 1;
 
@@ -50,14 +51,17 @@ int main(int argc, char **argv) {
     if (rank != 0) {
         fclose(stdout);
     }
-  
+
+#else
+    (void)rank;
+    (void)size;
 #endif
 
     H5Eset_auto(H5E_DEFAULT, nullptr, nullptr);
 
     auto args = next::parse_arguments(argc, argv, rank);
 
-    static constexpr const char *BANNER = R"NEXTBANNER(
+    static constexpr const char* BANNER = R"NEXTBANNER(
  _  _ ________   _________ 
 | \ | |  ____\ \ / /__   __|
 |  \| | |__   \ V /   | |   
@@ -80,6 +84,9 @@ int main(int argc, char **argv) {
 #elif defined(NEXT_FP32)
         std::cout << " Precision: FP32" << std::endl;
 #endif
+        if (args.max_steps > 0) {
+            std::cout << " Max Steps: " << args.max_steps << std::endl;
+        }
     }
 
     // Load particles
@@ -94,6 +101,14 @@ int main(int argc, char **argv) {
     char command;
 
     while (true) {
+        if (args.max_steps > 0 && step >= args.max_steps) {
+            if (rank == 0 && omp_get_thread_num() == 0) {
+                std::cout << "Reached maximum steps (" << args.max_steps << "). Exiting..."
+                          << std::endl;
+            }
+            break;
+        }
+
         real dtAdaptive = computeAdaptiveDt(particles, args.dt);
         Step(particles, dtAdaptive);
         simTime += dtAdaptive;
@@ -102,14 +117,23 @@ int main(int argc, char **argv) {
             std::string out = "dump_" + std::to_string(step);
 
             switch (args.format) {
-                case OutputFormat::VTK:  out += ".vtk";  SaveVTK(particles, out);  break;
-                case OutputFormat::VTU:  out += ".vtu";  SaveVTU(particles, out);  break;
-                case OutputFormat::HDF5: out += ".hdf5"; SaveHDF5(particles, out); break;
+                case OutputFormat::VTK:
+                    out += ".vtk";
+                    SaveVTK(particles, out);
+                    break;
+                case OutputFormat::VTU:
+                    out += ".vtu";
+                    SaveVTU(particles, out);
+                    break;
+                case OutputFormat::HDF5:
+                    out += ".hdf5";
+                    SaveHDF5(particles, out);
+                    break;
             }
 
             if (rank == 0 && omp_get_thread_num() == 0) {
-                std::cout << "[Dump " << step << "] t = " << simTime
-                          << ", file: " << out << std::endl;
+                std::cout << "[Dump " << step << "] t = " << simTime << ", file: " << out
+                          << std::endl;
             }
 
             nextDump += args.dump_interval;
@@ -131,7 +155,6 @@ int main(int argc, char **argv) {
 #ifdef NEXT_MPI
     MPI_Finalize();
 #endif
-  
 
     return 0;
 }

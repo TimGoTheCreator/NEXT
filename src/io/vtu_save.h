@@ -10,33 +10,32 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
-#include <vector>
-#include <string>
 #include <fstream>
+#include <string>
+#include <vector>
+
 #include "struct/particle.h"
 
 /**
  * @brief Saves the SoA Particle database to a VTU (XML) file.
  * This is the modern VTK format preferred by newer versions of ParaView.
  */
-inline void SaveVTU(const Particle& p, const std::string& filename)
-{
+inline void SaveVTU(const Particle& p, const std::string& filename) {
     std::ofstream out(filename);
     if (!out) return;
 
-    const size_t N = p.size(); // Total particles in the database
+    const size_t N = p.size();  // Total particles in the database
 
     out << "<?xml version=\"1.0\"?>\n";
     out << "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
     out << "  <UnstructuredGrid>\n";
-    out << "    <Piece NumberOfPoints=\"" << N 
-        << "\" NumberOfCells=\"" << N << "\">\n";
+    out << "    <Piece NumberOfPoints=\"" << N << "\" NumberOfCells=\"" << N << "\">\n";
 
     // --- POINTS (Coordinates) ---
     out << "      <Points>\n";
-    out << "        <DataArray type=\"Float32\" NumberOfComponents=\"3\" format=\"ascii\">\n          ";
-    for (size_t i = 0; i < N; i++)
-        out << p.x[i] << " " << p.y[i] << " " << p.z[i] << " ";
+    out << "        <DataArray type=\"Float32\" NumberOfComponents=\"3\" format=\"ascii\">\n       "
+           "   ";
+    for (size_t i = 0; i < N; i++) out << p.x[i] << " " << p.y[i] << " " << p.z[i] << " ";
     out << "\n        </DataArray>\n      </Points>\n";
 
     // --- CELLS (Topology) ---
@@ -50,7 +49,7 @@ inline void SaveVTU(const Particle& p, const std::string& filename)
     out << "\n        </DataArray>\n";
 
     out << "        <DataArray type=\"UInt8\" Name=\"types\" format=\"ascii\">\n          ";
-    for (size_t i = 0; i < N; i++) out << "1 "; // 1 = VTK_VERTEX
+    for (size_t i = 0; i < N; i++) out << "1 ";  // 1 = VTK_VERTEX
     out << "\n        </DataArray>\n      </Cells>\n";
 
     // --- POINT DATA (Attributes) ---
@@ -58,20 +57,18 @@ inline void SaveVTU(const Particle& p, const std::string& filename)
 
     // Particle Type (0 = Star, 1 = DM)
     out << "        <DataArray type=\"Int32\" Name=\"type\" format=\"ascii\">\n          ";
-    for (size_t i = 0; i < N; i++)
-        out << p.type[i] << " ";
+    for (size_t i = 0; i < N; i++) out << p.type[i] << " ";
     out << "\n        </DataArray>\n";
 
     // Velocity
-    out << "        <DataArray type=\"Float32\" Name=\"velocity\" NumberOfComponents=\"3\" format=\"ascii\">\n          ";
-    for (size_t i = 0; i < N; i++)
-        out << p.vx[i] << " " << p.vy[i] << " " << p.vz[i] << " ";
+    out << "        <DataArray type=\"Float32\" Name=\"velocity\" NumberOfComponents=\"3\" "
+           "format=\"ascii\">\n          ";
+    for (size_t i = 0; i < N; i++) out << p.vx[i] << " " << p.vy[i] << " " << p.vz[i] << " ";
     out << "\n        </DataArray>\n";
 
     // Mass
     out << "        <DataArray type=\"Float32\" Name=\"mass\" format=\"ascii\">\n          ";
-    for (size_t i = 0; i < N; i++)
-        out << p.m[i] << " ";
+    for (size_t i = 0; i < N; i++) out << p.m[i] << " ";
     out << "\n        </DataArray>\n";
 
     out << "      </PointData>\n    </Piece>\n  </UnstructuredGrid>\n</VTKFile>\n";

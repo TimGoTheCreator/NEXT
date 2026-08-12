@@ -10,31 +10,31 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
-#include <vector>
-#include <string>
 #include <fstream>
+#include <string>
+#include <vector>
+
 #include "struct/particle.h"
 
 /**
  * @brief Saves the SoA Particle database to a VTK Legacy file for ParaView.
  */
-inline void SaveVTK(const Particle& p, const std::string& filename)
-{
+inline void SaveVTK(const Particle& p, const std::string& filename) {
     std::ofstream out(filename);
     if (!out) return;
 
-    const size_t N = p.size(); // p is the SoA database
+    const size_t N = p.size();  // p is the SoA database
     out << "# vtk DataFile Version 3.0\n";
     out << "NEXT snapshot\n";
     out << "ASCII\n";
     out << "DATASET POLYDATA\n";
 
-    // Detect precision based on your build macros
-    #ifdef NEXT_FP64
+// Detect precision based on your build macros
+#ifdef NEXT_FP64
     constexpr const char* vtkType = "double";
-    #else
+#else
     constexpr const char* vtkType = "float";
-    #endif
+#endif
 
     // --- POINTS (Coordinates) ---
     out << "POINTS " << N << " " << vtkType << "\n";

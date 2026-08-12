@@ -10,20 +10,21 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "argparse.hpp"
+
 #include <iostream>
 #include <stdexcept>
 #ifdef NEXT_MPI
-    #include <mpi.h>
+#include <mpi.h>
 #endif
 
 namespace next {
 
-Arguments parse_arguments(int argc, char** argv, int rank)
-{
-    if (argc != 6) {
+Arguments parse_arguments(int argc, char** argv, int rank) {
+    if (argc < 6 || argc > 7) {
         // Only rank 0 prints usage
         if (rank == 0) {
-            std::cerr << "Usage: next <input.txt> <threads> <dt> <dump_interval> <vtk|vtu|hdf5>\n";
+            std::cerr << "Usage: next <input.txt> <threads> <dt> <dump_interval> <vtk|vtu|hdf5> "
+                         "[max_steps]\n";
         }
 
 #ifdef NEXT_MPI
@@ -34,9 +35,9 @@ Arguments parse_arguments(int argc, char** argv, int rank)
 
     Arguments args;
 
-    args.input_file    = argv[1];
-    args.threads       = std::stoi(argv[2]);
-    args.dt            = std::stod(argv[3]);
+    args.input_file = argv[1];
+    args.threads = std::stoi(argv[2]);
+    args.dt = std::stod(argv[3]);
     args.dump_interval = std::stod(argv[4]);
 
     std::string fmt = argv[5];
@@ -57,7 +58,11 @@ Arguments parse_arguments(int argc, char** argv, int rank)
         std::exit(1);
     }
 
+    if (argc == 7) {
+        args.max_steps = std::stoi(argv[6]);
+    }
+
     return args;
 }
 
-} // namespace next
+}  // namespace next

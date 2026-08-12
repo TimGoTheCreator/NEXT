@@ -1,33 +1,26 @@
-# What is NEXT (Public)
+# Overview of NEXT
 
-NEXT is an N-Body gravity code for astrophysics and such missions.
+NEXT (**Newtonian EXact Trajectories**) is a high-performance N-body gravitational simulation engine designed for astrophysics and computational physics.
 
-## Code / AstroPhysics
+---
 
-NEXT is a Computer program made in the low-level programming language C++ designed for running on workstations
-or supercomputers that simulates forces between objects called **"Newtonian Gravity"**
+## What is an N-Body Simulation?
 
-## What does N-Body mean?
+In physics and astronomy, an **N-body simulation** calculates how N distinct physical objects interact with one another under gravitational forces. 
 
-The term "N-Body" simply means **"multiple"** or **"many"** bodies, N could stand for 1, 500, or even millions!
-**"Body"** refers to such object in the simulation, it could be a star, a planet, or just particles.
+- N represents the particle count (ranging from a few bodies up to millions of particles).
+- **Body** refers to any discrete mass point—such as a planet, star, or dark matter tracer.
 
-**So, an "N-Body" simulation is just a way of calculating how "N" objects move under gravity when they all pull in at eachother in the same time.**
+An N-body simulator solves the coupled equations of motion for all N bodies simultaneously over discrete time steps.
 
-## What's the purpose of NEXT?
+---
 
-NEXT was made as a new simulation code written from **scratch**, to simulate interaction of bodies
-in short compute times.
+## Computational Efficiency in NEXT
 
-## How is it efficient?
+Direct calculation of gravitational forces between all pairs of N particles requires O(N^2) calculations per step, which becomes computationally prohibitive for large particle counts (N > 100,000).
 
-The challenge is: if you have millions of stars, calculating the pull of each other on every one takes forever
-with the basic formula.
+NEXT addresses this challenge using the **Barnes-Hut Octree Algorithm** O(N log N):
+1. **Spatial Decomposition:** Particles are recursively partitioned into a 3D octree hierarchy.
+2. **Higher-Order Multipoles:** Distant nodes are approximated using multipole moment expansions (dipole and quadrupole terms) rather than simple point masses.
 
-The trick: **Barnes-Hut** instead of looking at each particle one-by-one NEXT scans the simulation and divides particles into groups
-and starts to treat them as "big stars".
-
-NEXT, however doesn't use basic Barnes-Hut; it uses **Barnes-Hut With High Ordering Multipoles**, instead of treating it like a "big star", it adds extra detail using a **dipole, quadrupole, and higher terms** into the calculation, **adding shape and spread
-preserving accuracy of the engine**
-
-That means that NEXT can simulate thousands (if not millions) particles at once interacting, while still being fast!
+This approach delivers scalable, high-throughput simulation capability while preserving strict numerical accuracy.

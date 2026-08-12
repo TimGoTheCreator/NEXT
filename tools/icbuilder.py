@@ -1,3 +1,9 @@
+# DEPRECATED: If you actually use this, get some help. Use other generators, PLEASE!
+# This legacy Python IC builder is scheduled to be replaced by a dedicated generator tool.
+
+import warnings
+warnings.warn("If you actually use this, get some help. Use other generators, PLEASE!", DeprecationWarning, stacklevel=2)
+
 import random
 import math
 

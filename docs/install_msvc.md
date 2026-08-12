@@ -1,55 +1,39 @@
-# 🖥️ Building NEXT on Windows (MSVC)
+# Building NEXT on Windows (MSVC)
+
+This guide covers building NEXT on Windows using Microsoft Visual Studio (MSVC) and CMake.
+
+---
 
 ## Prerequisites
 
-- Git
-- CMake ≥ 3.10
-- Visual Studio 2022 with C++ workload
-- vcpkg
-- HDF5 (installed via vcpkg)
-- Python 3
-- LLVM OpenMP Component (C++ Clang-cl for v143 build tools (x64/x86)
+- **Visual Studio 2022** (with *Desktop development with C++* workload)
+- **CMake** (>= 3.10)
+- **Git**
+- **Python 3**
+- **HDF5** (installed via MSYS2, vcpkg, or installer)
 
-## Steps
+---
 
-1. **Clone the repository**
+## Installation & Build Steps
+
+### 1. Configure & Build with CMake
+
+Open **Developer PowerShell for VS 2022**:
 
 ```powershell
 git clone https://github.com/TimGoTheCreator/NEXT.git
 cd NEXT
+
+cmake -B build -S . -G "Visual Studio 17 2022" -A x64
+cmake --build build --config Release
 ```
 
-2. **Install vcpkg and HDF5**
+---
 
-```powershell
-git clone https://github.com/microsoft/vcpkg.git C:/vcpkg
-C:/vcpkg/bootstrap-vcpkg.bat
-C:/vcpkg/vcpkg install hdf5[hl]:x64-windows
-```
-
-3. **Build NEXT**
-
-```powershell
-mkdir build
-cd build
-cmake -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake ..
-cmake --build . --config Release
-cd ..
-```
-
-4. **Run a built-in example simulation**
+### 2. Run Example Simulation
 
 ```powershell
 cd examples/TwoBodies
 python two_body.py
+../../next.exe two_body.txt 8 0.001 0.1 vtu 50
 ```
-
-#### If the copy command worked (copies to project root by default in CMake):
-../../next.exe two_body.txt 8 0.001 0.1 vtu
-
-#### If your executable is in build/
-../../build/Release/next.exe two_body.txt 8 0.001 0.1 vtu
-
-5. **View results**
-
-Open the `.vtu` output in ParaView.

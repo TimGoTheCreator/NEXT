@@ -10,28 +10,30 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #pragma once
+#include <omp.h>
+
+#include <algorithm>
+#include <memory>
+
 #include "floatdef.h"
 #include "octree.h"
 #include "struct/particle.h"
-#include <memory>
-#include <algorithm>
-#include <omp.h>
 #ifdef NEXT_MPI
-    #include <mpi.h>
+#include <mpi.h>
 #endif
 #include <chrono>
 #include <fstream>
 
-inline void Step(ParticleSystem &ps, real dt) {
+inline void Step(ParticleSystem& ps, real dt) {
     if (ps.size() == 0) return;
 
-    #ifdef NEXT_BENCHMARK
+#ifdef NEXT_BENCHMARK
     auto t_start = std::chrono::high_resolution_clock::now();
-    #endif
+#endif
 
     const real theta = real(0.5);
-    const real half  = dt * real(0.5);
-    const int  N     = static_cast<int>(ps.size());
+    const real half = dt * real(0.5);
+    const int N = static_cast<int>(ps.size());
 
 #ifdef NEXT_MPI
     int rank, size;
@@ -39,35 +41,36 @@ inline void Step(ParticleSystem &ps, real dt) {
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
     MPI_Datatype MPI_REAL_T;
-#  ifdef NEXT_FP64
+#ifdef NEXT_FP64
     MPI_REAL_T = MPI_DOUBLE;
-#  elif defined(NEXT_FP32)
+#elif defined(NEXT_FP32)
     MPI_REAL_T = MPI_FLOAT;
-#  else
-#    error "Define NEXT_FP32 or NEXT_FP64 for 'real' type."
-#  endif
+#else
+#error "Define NEXT_FP32 or NEXT_FP64 for 'real' type."
+#endif
 #else
     int rank = 0;
     int size = 1;
 #endif
 
     const int start = (rank * N) / size;
-    const int end   = ((rank + 1) * N) / size;
+    const int end = ((rank + 1) * N) / size;
 
 #ifdef NEXT_MPI
     std::vector<int> counts(size), displs(size);
     for (int r = 0; r < size; ++r) {
         const int s = (r * N) / size;
         const int e = ((r + 1) * N) / size;
-        counts[r]   = e - s;
-        displs[r]   = s;
+        counts[r] = e - s;
+        displs[r] = s;
     }
 #endif
 
     auto buildTree = [&]() -> std::unique_ptr<Octree> {
-        struct BBox { real minx, miny, minz, maxx, maxy, maxz; };
-        BBox local{ real(1e30), real(1e30), real(1e30),
-                    real(-1e30), real(-1e30), real(-1e30) };
+        struct BBox {
+            real minx, miny, minz, maxx, maxy, maxz;
+        };
+        BBox local{real(1e30), real(1e30), real(1e30), real(-1e30), real(-1e30), real(-1e30)};
 
         for (int i = 0; i < N; ++i) {
             local.minx = std::min(local.minx, ps.x[i]);
@@ -90,19 +93,18 @@ inline void Step(ParticleSystem &ps, real dt) {
         BBox global = local;
 #endif
 
-        const real cx   = (global.minx + global.maxx) * real(0.5);
-        const real cy   = (global.miny + global.maxy) * real(0.5);
-        const real cz   = (global.minz + global.maxz) * real(0.5);
-        real       size = std::max({global.maxx - global.minx,
-                                    global.maxy - global.miny,
-                                    global.maxz - global.minz}) * real(0.5);
+        const real cx = (global.minx + global.maxx) * real(0.5);
+        const real cy = (global.miny + global.maxy) * real(0.5);
+        const real cz = (global.minz + global.maxz) * real(0.5);
+        real size = std::max({global.maxx - global.minx, global.maxy - global.miny,
+                              global.maxz - global.minz}) *
+                    real(0.5);
 
         if (size <= real(0)) size = real(1.0);
 
         auto root = std::make_unique<Octree>(cx, cy, cz, size);
 
-        for (int i = 0; i < N; ++i)
-            root->insert(i, ps);
+        for (int i = 0; i < N; ++i) root->insert(i, ps);
 
         root->computeMass(ps);
         return root;
@@ -112,7 +114,7 @@ inline void Step(ParticleSystem &ps, real dt) {
     {
         auto root = buildTree();
 
-        #pragma omp parallel for schedule(dynamic, 64)
+#pragma omp parallel for schedule(dynamic, 64)
         for (int i = start; i < end; ++i) {
             real ax = real(0), ay = real(0), az = real(0);
             bhAccel(root.get(), i, ps, theta, ax, ay, az);
@@ -124,21 +126,18 @@ inline void Step(ParticleSystem &ps, real dt) {
 
 #ifdef NEXT_MPI
         MPI_Request reqs[3];
-        MPI_Iallgatherv(MPI_IN_PLACE, 0, MPI_REAL_T,
-                        ps.vx.data(), counts.data(), displs.data(), MPI_REAL_T,
-                        MPI_COMM_WORLD, &reqs[0]);
-        MPI_Iallgatherv(MPI_IN_PLACE, 0, MPI_REAL_T,
-                        ps.vy.data(), counts.data(), displs.data(), MPI_REAL_T,
-                        MPI_COMM_WORLD, &reqs[1]);
-        MPI_Iallgatherv(MPI_IN_PLACE, 0, MPI_REAL_T,
-                        ps.vz.data(), counts.data(), displs.data(), MPI_REAL_T,
-                        MPI_COMM_WORLD, &reqs[2]);
+        MPI_Iallgatherv(MPI_IN_PLACE, 0, MPI_REAL_T, ps.vx.data(), counts.data(), displs.data(),
+                        MPI_REAL_T, MPI_COMM_WORLD, &reqs[0]);
+        MPI_Iallgatherv(MPI_IN_PLACE, 0, MPI_REAL_T, ps.vy.data(), counts.data(), displs.data(),
+                        MPI_REAL_T, MPI_COMM_WORLD, &reqs[1]);
+        MPI_Iallgatherv(MPI_IN_PLACE, 0, MPI_REAL_T, ps.vz.data(), counts.data(), displs.data(),
+                        MPI_REAL_T, MPI_COMM_WORLD, &reqs[2]);
         MPI_Waitall(3, reqs, MPI_STATUSES_IGNORE);
 #endif
     }
 
-    // DRIFT
-    #pragma omp parallel for schedule(static)
+// DRIFT
+#pragma omp parallel for schedule(static)
     for (int i = start; i < end; ++i) {
         ps.x[i] += ps.vx[i] * dt;
         ps.y[i] += ps.vy[i] * dt;
@@ -147,15 +146,12 @@ inline void Step(ParticleSystem &ps, real dt) {
 
 #ifdef NEXT_MPI
     MPI_Request reqs3[3];
-    MPI_Iallgatherv(MPI_IN_PLACE, 0, MPI_REAL_T,
-                    ps.x.data(), counts.data(), displs.data(), MPI_REAL_T,
-                    MPI_COMM_WORLD, &reqs3[0]);
-    MPI_Iallgatherv(MPI_IN_PLACE, 0, MPI_REAL_T,
-                    ps.y.data(), counts.data(), displs.data(), MPI_REAL_T,
-                    MPI_COMM_WORLD, &reqs3[1]);
-    MPI_Iallgatherv(MPI_IN_PLACE, 0, MPI_REAL_T,
-                    ps.z.data(), counts.data(), displs.data(), MPI_REAL_T,
-                    MPI_COMM_WORLD, &reqs3[2]);
+    MPI_Iallgatherv(MPI_IN_PLACE, 0, MPI_REAL_T, ps.x.data(), counts.data(), displs.data(),
+                    MPI_REAL_T, MPI_COMM_WORLD, &reqs3[0]);
+    MPI_Iallgatherv(MPI_IN_PLACE, 0, MPI_REAL_T, ps.y.data(), counts.data(), displs.data(),
+                    MPI_REAL_T, MPI_COMM_WORLD, &reqs3[1]);
+    MPI_Iallgatherv(MPI_IN_PLACE, 0, MPI_REAL_T, ps.z.data(), counts.data(), displs.data(),
+                    MPI_REAL_T, MPI_COMM_WORLD, &reqs3[2]);
     MPI_Waitall(3, reqs3, MPI_STATUSES_IGNORE);
 #endif
 
@@ -163,7 +159,7 @@ inline void Step(ParticleSystem &ps, real dt) {
     {
         auto root = buildTree();
 
-        #pragma omp parallel for schedule(dynamic, 64)
+#pragma omp parallel for schedule(dynamic, 64)
         for (int i = start; i < end; ++i) {
             real ax = real(0), ay = real(0), az = real(0);
             bhAccel(root.get(), i, ps, theta, ax, ay, az);
@@ -175,15 +171,12 @@ inline void Step(ParticleSystem &ps, real dt) {
 
 #ifdef NEXT_MPI
         MPI_Request reqs4[3];
-        MPI_Iallgatherv(MPI_IN_PLACE, 0, MPI_REAL_T,
-                        ps.vx.data(), counts.data(), displs.data(), MPI_REAL_T,
-                        MPI_COMM_WORLD, &reqs4[0]);
-        MPI_Iallgatherv(MPI_IN_PLACE, 0, MPI_REAL_T,
-                        ps.vy.data(), counts.data(), displs.data(), MPI_REAL_T,
-                        MPI_COMM_WORLD, &reqs4[1]);
-        MPI_Iallgatherv(MPI_IN_PLACE, 0, MPI_REAL_T,
-                        ps.vz.data(), counts.data(), displs.data(), MPI_REAL_T,
-                        MPI_COMM_WORLD, &reqs4[2]);
+        MPI_Iallgatherv(MPI_IN_PLACE, 0, MPI_REAL_T, ps.vx.data(), counts.data(), displs.data(),
+                        MPI_REAL_T, MPI_COMM_WORLD, &reqs4[0]);
+        MPI_Iallgatherv(MPI_IN_PLACE, 0, MPI_REAL_T, ps.vy.data(), counts.data(), displs.data(),
+                        MPI_REAL_T, MPI_COMM_WORLD, &reqs4[1]);
+        MPI_Iallgatherv(MPI_IN_PLACE, 0, MPI_REAL_T, ps.vz.data(), counts.data(), displs.data(),
+                        MPI_REAL_T, MPI_COMM_WORLD, &reqs4[2]);
         MPI_Waitall(3, reqs4, MPI_STATUSES_IGNORE);
 #endif
     }

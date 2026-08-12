@@ -9,19 +9,20 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "struct/particle.h"
 #include <hdf5.h>
-#include <vector>
-#include <string>
+
 #include <fstream>
 #include <iostream>
+#include <string>
+#include <vector>
+
+#include "struct/particle.h"
 
 /**
- * @brief Saves the ParticleSystem to HDF5. 
+ * @brief Saves the ParticleSystem to HDF5.
  * Detects real precision to match NEXT_FP32 or NEXT_FP64.
  */
-void SaveHDF5(const ParticleSystem& ps, const std::string& filename)
-{
+void SaveHDF5(const ParticleSystem& ps, const std::string& filename) {
     const size_t N = ps.size();
     if (N == 0) return;
 
@@ -36,28 +37,30 @@ void SaveHDF5(const ParticleSystem& ps, const std::string& filename)
     std::vector<float> vels(N * 3);
     std::vector<int> ids(N);
 
-    #pragma omp parallel for
+#pragma omp parallel for
     for (size_t i = 0; i < N; i++) {
-        coords[3*i+0] = (float)ps.x[i];
-        coords[3*i+1] = (float)ps.y[i];
-        coords[3*i+2] = (float)ps.z[i];
-        vels[3*i+0]   = (float)ps.vx[i];
-        vels[3*i+1]   = (float)ps.vy[i];
-        vels[3*i+2]   = (float)ps.vz[i];
+        coords[3 * i + 0] = (float)ps.x[i];
+        coords[3 * i + 1] = (float)ps.y[i];
+        coords[3 * i + 2] = (float)ps.z[i];
+        vels[3 * i + 0] = (float)ps.vx[i];
+        vels[3 * i + 1] = (float)ps.vy[i];
+        vels[3 * i + 2] = (float)ps.vz[i];
         ids[i] = (int)i + 1;
     }
 
-    hsize_t dims3[2] = { N, 3 };
+    hsize_t dims3[2] = {N, 3};
     hid_t space3 = H5Screate_simple(2, dims3, NULL);
-    hsize_t dims1[1] = { N };
+    hsize_t dims1[1] = {N};
     hid_t space1 = H5Screate_simple(1, dims1, NULL);
 
     // Write Coords & Vels (storing as float32)
-    hid_t dset_coords = H5Dcreate(group, "Coordinates", H5T_NATIVE_FLOAT, space3, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    hid_t dset_coords = H5Dcreate(group, "Coordinates", H5T_NATIVE_FLOAT, space3, H5P_DEFAULT,
+                                  H5P_DEFAULT, H5P_DEFAULT);
     H5Dwrite(dset_coords, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, coords.data());
     H5Dclose(dset_coords);
 
-    hid_t dset_vels = H5Dcreate(group, "Velocities", H5T_NATIVE_FLOAT, space3, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    hid_t dset_vels = H5Dcreate(group, "Velocities", H5T_NATIVE_FLOAT, space3, H5P_DEFAULT,
+                                H5P_DEFAULT, H5P_DEFAULT);
     H5Dwrite(dset_vels, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, vels.data());
     H5Dclose(dset_vels);
 
@@ -66,11 +69,13 @@ void SaveHDF5(const ParticleSystem& ps, const std::string& filename)
     hid_t h5_real_type = (sizeof(real) == 4) ? H5T_NATIVE_FLOAT : H5T_NATIVE_DOUBLE;
     int precision = (sizeof(real) == 4) ? 4 : 8;
 
-    hid_t dset_masses = H5Dcreate(group, "Masses", h5_real_type, space1, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    hid_t dset_masses =
+        H5Dcreate(group, "Masses", h5_real_type, space1, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     H5Dwrite(dset_masses, h5_real_type, H5S_ALL, H5S_ALL, H5P_DEFAULT, ps.m.data());
     H5Dclose(dset_masses);
 
-    hid_t dset_ids = H5Dcreate(group, "ParticleIDs", H5T_NATIVE_INT, space1, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    hid_t dset_ids = H5Dcreate(group, "ParticleIDs", H5T_NATIVE_INT, space1, H5P_DEFAULT,
+                               H5P_DEFAULT, H5P_DEFAULT);
     H5Dwrite(dset_ids, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, ids.data());
     H5Dclose(dset_ids);
 
@@ -86,12 +91,14 @@ void SaveHDF5(const ParticleSystem& ps, const std::string& filename)
     xmf << "    <Grid Name=\"Particles\" GridType=\"Uniform\">\n";
     xmf << "      <Topology TopologyType=\"Polyvertex\" NumberOfElements=\"" << N << "\"/>\n";
     xmf << "      <Geometry GeometryType=\"XYZ\">\n";
-    xmf << "        <DataItem Dimensions=\"" << N << " 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+    xmf << "        <DataItem Dimensions=\"" << N
+        << " 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
     xmf << "          " << filename << ":/PartType1/Coordinates\n";
     xmf << "        </DataItem>\n      </Geometry>\n";
     xmf << "      <Attribute Name=\"Mass\" AttributeType=\"Scalar\" Center=\"Node\">\n";
     // We dynamically set the precision here to match the file
-    xmf << "        <DataItem Dimensions=\"" << N << "\" NumberType=\"Float\" Precision=\"" << precision << "\" Format=\"HDF\">\n";
+    xmf << "        <DataItem Dimensions=\"" << N << "\" NumberType=\"Float\" Precision=\""
+        << precision << "\" Format=\"HDF\">\n";
     xmf << "          " << filename << ":/PartType1/Masses\n";
     xmf << "        </DataItem>\n      </Attribute>\n";
     xmf << "    </Grid>\n  </Domain>\n</Xdmf>\n";

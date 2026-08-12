@@ -36,6 +36,26 @@
 *.exe
 *.out
 *.app
+next
+
+# Build directories & caches
+build/
+_build/
+__pycache__/
+*.pyc
+
+# Simulation Data Outputs
+*.vtu
+*.vtk
+*.hdf5
+dump_*.vtu
+dump_*.vtk
+dump_*.hdf5
+
+# IDE & Editor folders
+.vscode/
+.idea/
+*.user
 
 # debug information files
 *.dwo

@@ -1,3 +1,15 @@
+# NEXT 2026.08.12
+#### Major changes:
+- Added optional `[max_steps]` CLI argument to automatically limit total simulation steps / dumps.
+
+#### Minor changes:
+- Updated CLI parser (`argparse`) to support 6th optional positional parameter.
+- Updated startup splash screen to display `Max Steps` when configured.
+- Fix citation transliteration (Timofey - Timofiy).
+- Unified licensing under GNU GPLv3+ (removed LGPL files).
+
+---
+
 # NEXT 2026.02.08
 #### Major changes:
 Added Dark Matter

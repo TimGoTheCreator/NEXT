@@ -5,9 +5,9 @@ The disk has a radius of `0.5`, a vertical thickness of `0.2`, and a total mass 
 
 Disk setups like this are useful for testing **galaxy stability**, **rotation curves**, and **flattened mass distributions**.
 
-### Running this example from this directory
+### Running this example
 
 ```bash
 python galaxy.py
-../../next galaxy.txt 8 0.01 1 vtu
+../../next galaxy.txt 8 0.01 0.1 vtu 100
 ```

@@ -1,49 +1,40 @@
-# What is NEXT? (Astronomer)
+# What is NEXT? (Astrophysical Context)
 
-NEXT is a new simulation engine written from scratch
-NEXT uses **pure Newtonian Gravity**, 
-However, NEXT is still young so that it isn't guaranteed it'll stay that. 
-**Hydrodynamics, Dark Matter, or Radiation** might show up later. 
+NEXT (**Newtonian EXact Trajectories**) is an N-body gravitational simulation engine written in C++ from the ground up.
 
-## How does NEXT preserve stability?
+Currently, NEXT models **pure Newtonian gravity** using gravitational multipole interactions and symplectic integration. Future extensions may incorporate gas dynamics, radiative processes, or dark matter models.
 
-NEXT uses a **Barnes-Hut Octree** with **Higher-Order Multipoles** such as the following: dipole, quadrupole, etc. 
-This means that far-away groups aren't treated as just "one lump" but NEXT contributes their
-**Shape and Mass distribution**.
+---
 
-In practice, this gives
-- **Much lower force errors than monopole Barnes-Hut**
-- **Better Hamiltonian system stability**
-- **Better Long-Term Stability**
-- **Cleaner Energy Preservation**
-- **More Reliable galaxy cluster interactions**
+## Numerical Stability & Algorithm
 
-With Higher-Order-Multipole you can also
-trade accuracy for speed:
-tighter opening angle = more accuracy
-looser opening angle = more speed. 
+### Barnes-Hut Octree with Higher-Order Multipoles
+NEXT builds a **Barnes-Hut Octree** O(N log N) enhanced with **higher-order multipole expansions** (including dipole and quadrupole terms). Rather than approximating distant particle groups as point-mass monopoles, NEXT accounts for spatial mass distributions and geometric shape.
 
-## What can you simulate? 
+Key advantages:
+- **Reduced Force Error:** Significantly lower force truncation errors compared to standard monopole Barnes-Hut.
+- **Enhanced Phase Space & Energy Conservation:** Superior long-term stability for bound Hamiltonian systems.
+- **Accurate Cluster Dynamics:** Reliable modeling of galaxy interactions, tidal streams, and dense star clusters.
+- **Tunable Precision/Speed:** Multipole expansion order and cell opening angle theta allow precise trade-offs between computational speed and numerical accuracy.
 
-Anything that's mostly gravity:
-- Hamiltonian Systems
-- Star Clusters
-- Galaxy Interactions
-- Tidal Stream simulations
-- General N-Body 
+---
 
-If you need gas, cooling, dark-matter -
-NEXT doesn't have that yet.
+## Integrator & Physical Units
 
-NEXT has no weird unit systems, and it depends on the G parameter (1.0 by default) 
+### Symplectic KDK Leapfrog
+NEXT uses a 2nd-order **Kick-Drift-Kick (KDK) Leapfrog Integrator**:
+- **Symplectic:** Preserves phase-space volume and prevents secular energy drift over long integration periods.
+- **Adaptive Timestepping & Softening:** Dynamically adjusts numerical time steps based on local inter-particle distances and gravitational acceleration, employing adaptive softening to prevent singular close-encounter forces.
 
-## Stability and Integrator
+### Units & Constants
+NEXT does not impose rigid unit systems. Physical parameters scale directly with the gravitational constant G (G = 1.0 by default).
 
-NEXT uses a standard **Kick-Drift-Kick Leapfrog Integrator**.
-NEXT uses the KDK leapfrog because:
-- It's simple to implement
-- It's Symplectic
-- Leapfrog is 2nd-order
+---
 
-Stability: NEXT uses an adaptive timestep and softening the adaptive timestep can be from 1% to 100% of the one set by the user.
-The softening is calculated from how close particles are to each other. 
+## Simulation Capabilities
+
+NEXT is optimized for gravitationally dominated astrophysical systems:
+- Stellar clusters and globular clusters
+- Galactic disc dynamics and galaxy mergers
+- Tidal stream evolution
+- General N-body systems (N = 1,000 to 10,000,000+)

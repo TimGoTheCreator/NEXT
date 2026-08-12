@@ -1,55 +1,45 @@
-# 🖥️ Building NEXT on Windows (MinGW)
+# Building NEXT on Windows (MinGW / MSYS2)
+
+This guide covers building NEXT on Windows using MinGW-w64 GCC via MSYS2.
+
+---
 
 ## Prerequisites
 
-- Git
-- CMake ≥ 3.10
-- MinGW-w64 GCC
-- MSYS2 environment
-- HDF5 via MSYS2
-- Python 3
-- (Optional) Chocolatey, for automated MSYS2 install
+- **MSYS2** (MinGW-w64 environment)
+- **CMake** (>= 3.10)
+- **Git**
+- **Python 3**
 
-## Steps
+---
 
-1. **Clone the repository**
+## Installation & Build Steps
+
+### 1. Install Dependencies in MSYS2 UCRT64 / MinGW64 Terminal
+
+```bash
+pacman -Syu --noconfirm
+pacman -S --noconfirm mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-cmake mingw-w64-ucrt-x86_64-ninja mingw-w64-ucrt-x86_64-hdf5 python
+```
+
+---
+
+### 2. Build NEXT
 
 ```bash
 git clone https://github.com/TimGoTheCreator/NEXT.git
 cd NEXT
+
+cmake -B build -S .
+cmake --build build --config Release
 ```
 
-2. **Install dependencies via MSYS2**
+---
 
-```bash
-choco install msys2 -y
-C:/tools/msys64/usr/bin/pacman -Syu --noconfirm
-C:/tools/msys64/usr/bin/pacman -S --noconfirm mingw-w64-x86_64-hdf5 python
-```
-
-3. **Build NEXT**
-
-```bash
-mkdir build
-cd build
-cmake -G "MinGW Makefiles" -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ ..
-cmake --build . --config Release
-cd ..
-```
-
-4. **Run a built-in example simulation**
+### 3. Run Example Simulation
 
 ```bash
 cd examples/TwoBodies
 python two_body.py
+../../next.exe two_body.txt 8 0.001 0.1 vtu 50
 ```
-
-#### If the copy command worked (copies to project root by default in CMake):
-../../next.exe two_body.txt 8 0.001 0.1 vtu
-
-#### If your executable is in build/
-../../build/next.exe two_body.txt 8 0.001 0.1 vtu
-
-5. **View results**
-
-Open the `.vtu` output in ParaView.

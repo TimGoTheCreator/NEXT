@@ -1,23 +1,34 @@
-# Running an Example in NEXT
+# Running Simulations in NEXT
 
-To run an example in **NEXT**, first navigate to the example’s directory.  
-You will also need a Python interpreter installed.
+To execute a simulation scenario, first navigate to the desired example directory in `examples/`.
 
-As a demonstration, let’s try the **ColdCollapseGalaxy** example:
+---
+
+## Example Execution: ColdCollapseGalaxy
+
 ```bash
-    cd examples
-    cd ColdCollapseGalaxy
-    python coldcollapse.py
-    ../../next coldcollapse.txt 8 0.25 0.2 vtu
+cd examples/ColdCollapseGalaxy
+python coldcollapse.py
+../../next coldcollapse.txt 8 0.01 0.1 vtu 100
 ```
-### Explanation of the command
 
-- `../../next` → Move up two directories (to the project root) and run the NEXT executable  
-- `coldcollapse.txt` → The scenario / initial condition file  
-- `8` → Number of OpenMP (CPU) threads; adjust based on your CPU  
-- `0.25` → Timestep, controls how fast the simulation advances  
-- `0.2` → Dump interval, controls how often NEXT writes output  
-- `vtu` → Output format; options are `vtk` or `vtu`  
+---
 
-Now you can enjoy the simulation.  
-To exit, press **Ctrl+C** or type **q** (then Enter).
+## Command Line Arguments Explained
+
+```bash
+next <input.txt> <threads> <dt> <dump_interval> <vtk|vtu|hdf5> [max_steps]
+```
+
+1. **`input.txt`** - Path to initial particle state file (positions, velocities, masses).
+2. **`threads`** - Number of OpenMP worker threads for parallel computation.
+3. **`dt`** - Baseline simulation time step (dt).
+4. **`dump_interval`** - Simulation time interval between data output dumps.
+5. **`format`** - Output data format (`vtu`, `vtk`, or `hdf5`).
+6. **`[max_steps]`** - *(Optional)* Maximum step count before exiting automatically.
+
+---
+
+## Interactive Termination
+
+During execution, press **`q`** and hit Enter in the terminal to request a graceful exit.

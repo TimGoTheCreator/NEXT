@@ -1,10 +1,10 @@
 cff-version: 1.2.0
 title: "NEXT: Newtonian EXact Trajectories"
-version: "2026.02.08"
-date-released: "2026-02-08"
+version: "2026.08.12"
+date-released: "2026-08-12"
 authors:
   - family-names: Zakharchuk
-    given-names: Timofey
+    given-names: Timofiy
     email: timofey.zakharchuk.research@gmail.com
     orcid: https://orcid.org/0009-0002-0385-3255
     affiliation: "Independent researcher in computational physics"
