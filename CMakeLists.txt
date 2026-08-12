@@ -145,17 +145,29 @@ endif()
 # ==============================================================================
 # HDF5 I/O Library Detection
 # ==============================================================================
-if(MSVC AND DEFINED ENV{HDF5_DIR})
-    set(HDF5_ROOT "$ENV{HDF5_DIR}")
-    set(CMAKE_PREFIX_PATH "${HDF5_ROOT};${CMAKE_PREFIX_PATH}")
-endif()
-
 if(MINGW)
-    set(CMAKE_PREFIX_PATH "C:/tools/msys64/mingw64;${CMAKE_PREFIX_PATH}")
+    if(DEFINED ENV{MSYSTEM_PREFIX})
+        set(CMAKE_PREFIX_PATH "$ENV{MSYSTEM_PREFIX};${CMAKE_PREFIX_PATH}")
+    endif()
+    set(CMAKE_PREFIX_PATH "C:/msys64/ucrt64;C:/msys64/mingw64;C:/tools/msys64/mingw64;C:/mingw64;${CMAKE_PREFIX_PATH}")
 endif()
 
-find_package(HDF5 REQUIRED COMPONENTS C HL)
-target_include_directories(next PRIVATE ${HDF5_INCLUDE_DIRS})
+find_package(HDF5 QUIET CONFIG COMPONENTS C HL)
+if(NOT HDF5_FOUND)
+    find_package(HDF5 REQUIRED COMPONENTS C HL)
+endif()
+
+if(TARGET hdf5::hdf5)
+    target_link_libraries(next PRIVATE hdf5::hdf5)
+endif()
+if(TARGET hdf5::hdf5_hl)
+    target_link_libraries(next PRIVATE hdf5::hdf5_hl)
+endif()
+if(TARGET HDF5::HDF5)
+    target_link_libraries(next PRIVATE HDF5::HDF5)
+endif()
+
+target_include_directories(next PRIVATE ${HDF5_INCLUDE_DIRS} ${HDF5_C_INCLUDE_DIRS})
 target_link_libraries(next PRIVATE ${HDF5_LIBRARIES})
 
 # ==============================================================================

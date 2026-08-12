@@ -136,6 +136,7 @@ jobs:
         with:
           msystem: UCRT64
           update: true
+          path-type: inherit
           install: >-
             mingw-w64-ucrt-x86_64-gcc
             mingw-w64-ucrt-x86_64-cmake
@@ -174,7 +175,7 @@ jobs:
 
       - name: Configure CMake (Windows MinGW)
         if: (matrix.os == 'windows-latest' || matrix.os == 'windows-2022') && matrix.c_compiler == 'gcc'
-        shell: bash
+        shell: msys2 {0}
         run: |
           cmake -G "MinGW Makefiles" \
             -B "${{ github.workspace }}/build" \
@@ -200,10 +201,13 @@ jobs:
           -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
 
-      # ---------------------------------------------------------
-      # Build
-      # ---------------------------------------------------------
-      - name: Build
+      - name: Build (Windows MinGW)
+        if: (matrix.os == 'windows-latest' || matrix.os == 'windows-2022') && matrix.c_compiler == 'gcc'
+        shell: msys2 {0}
+        run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
+
+      - name: Build (Default)
+        if: "!((matrix.os == 'windows-latest' || matrix.os == 'windows-2022') && matrix.c_compiler == 'gcc')"
         run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
 
       # ---------------------------------------------------------
