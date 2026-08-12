@@ -35,14 +35,12 @@ if(NEXT_FP64)
     math(EXPR NEXT_MODE_COUNT "${NEXT_MODE_COUNT} + 1")
 endif()
 
-if(NEXT_MODE_COUNT EQUAL 0)
-    message(FATAL_ERROR "[NEXT CMake Error] You must enable either NEXT_FP64 or NEXT_FP32.")
-elseif(NEXT_MODE_COUNT GREATER 1)
-    message(FATAL_ERROR "[NEXT CMake Error] Conflict: Select only one precision mode (NEXT_FP64 or NEXT_FP32).")
+if(NOT NEXT_MODE_COUNT EQUAL 1)
+    message(FATAL_ERROR "[NEXT HPC] Exactly ONE precision mode must be selected (NEXT_FP32 or NEXT_FP64).")
 endif()
 
 # ==============================================================================
-# Target Executable & Source Definitions
+# Target & Source Configuration
 # ==============================================================================
 file(GLOB_RECURSE SRC_FILES ${CMAKE_SOURCE_DIR}/src/*.cpp)
 file(GLOB ARGPARSE_FILES ${CMAKE_SOURCE_DIR}/argparse/*.cpp)
@@ -70,18 +68,9 @@ endif()
 # Compiler Optimization & Warning Flags
 # ==============================================================================
 if(MSVC)
-    target_compile_options(next PRIVATE
-        /W4
-        /O2
-        /permissive-
-    )
+    target_compile_options(next PRIVATE /W3 /O2)
 else()
-    target_compile_options(next PRIVATE
-        -Wall
-        -Wextra
-        -Wpedantic
-        -O3
-    )
+    target_compile_options(next PRIVATE -Wall -O3)
 
     if(NEXT_NATIVE_ARCH)
         target_compile_options(next PRIVATE -march=native)
@@ -123,11 +112,7 @@ endif()
 find_package(OpenMP QUIET)
 if(OpenMP_CXX_FOUND)
     message(STATUS "[NEXT HPC] OpenMP detected - enabling multi-threading")
-    if(MSVC)
-        target_compile_options(next PRIVATE /openmp:llvm)
-    else()
-        target_link_libraries(next PRIVATE OpenMP::OpenMP_CXX)
-    endif()
+    target_link_libraries(next PRIVATE OpenMP::OpenMP_CXX)
 else()
     message(STATUS "[NEXT HPC] OpenMP not found - building single-threaded")
 endif()
@@ -145,30 +130,30 @@ endif()
 # ==============================================================================
 # HDF5 I/O Library Detection
 # ==============================================================================
+if(MSVC AND DEFINED ENV{HDF5_DIR})
+    set(HDF5_ROOT "$ENV{HDF5_DIR}")
+    set(CMAKE_PREFIX_PATH "${HDF5_ROOT};${CMAKE_PREFIX_PATH}")
+endif()
+
 if(MINGW)
     if(DEFINED ENV{MSYSTEM_PREFIX})
         set(CMAKE_PREFIX_PATH "$ENV{MSYSTEM_PREFIX};${CMAKE_PREFIX_PATH}")
     endif()
-    set(CMAKE_PREFIX_PATH "C:/msys64/ucrt64;C:/msys64/mingw64;C:/tools/msys64/mingw64;C:/mingw64;${CMAKE_PREFIX_PATH}")
+    set(CMAKE_PREFIX_PATH "C:/tools/msys64/mingw64;C:/msys64/ucrt64;C:/msys64/mingw64;${CMAKE_PREFIX_PATH}")
 endif()
 
-find_package(HDF5 QUIET CONFIG COMPONENTS C HL)
-if(NOT HDF5_FOUND)
-    find_package(HDF5 REQUIRED COMPONENTS C HL)
-endif()
+find_package(HDF5 REQUIRED COMPONENTS C HL)
 
-if(TARGET hdf5::hdf5)
-    target_link_libraries(next PRIVATE hdf5::hdf5)
-endif()
-if(TARGET hdf5::hdf5_hl)
-    target_link_libraries(next PRIVATE hdf5::hdf5_hl)
-endif()
+include_directories(${HDF5_INCLUDE_DIRS})
+target_include_directories(next PRIVATE ${HDF5_INCLUDE_DIRS} ${HDF5_C_INCLUDE_DIRS})
+target_link_libraries(next PRIVATE ${HDF5_LIBRARIES})
+
 if(TARGET HDF5::HDF5)
     target_link_libraries(next PRIVATE HDF5::HDF5)
 endif()
-
-target_include_directories(next PRIVATE ${HDF5_INCLUDE_DIRS} ${HDF5_C_INCLUDE_DIRS})
-target_link_libraries(next PRIVATE ${HDF5_LIBRARIES})
+if(TARGET hdf5::hdf5)
+    target_link_libraries(next PRIVATE hdf5::hdf5)
+endif()
 
 # ==============================================================================
 # Post-Build Executable Copy

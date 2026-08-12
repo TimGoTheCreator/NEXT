@@ -2,15 +2,9 @@ name: CMake on multiple platforms
 
 on:
   push:
-    branches: [ main, adaptiveDt ]
-    paths-ignore: '**/.md'
+    branches: [ "main" ]
   pull_request:
-    branches: [ main ]
-    paths-ignore: '**/.md'
-
-concurrency:
-  group: multiplatform-ci-${{ github.ref }}
-  cancel-in-progress: true
+    branches: [ "main" ]
 
 jobs:
   build:
@@ -61,15 +55,15 @@ jobs:
           - os: ubuntu-24.04
             c_compiler: cl
           - os: macos-latest
-            c_compiler: gcc
-          - os: macos-latest
             c_compiler: cl
+          - os: macos-latest
+            c_compiler: gcc
 
     steps:
       - uses: actions/checkout@v4
 
       # ---------------------------------------------------------
-      # CACHE: APT (Ubuntu)
+      # CACHE: APT (Linux)
       # ---------------------------------------------------------
       - name: Cache APT packages
         if: startsWith(matrix.os, 'ubuntu')
@@ -110,13 +104,12 @@ jobs:
       - name: Cache CMake build
         uses: actions/cache@v4
         with:
-          path: build
-          key: cmake-${{ matrix.os }}-${{ matrix.c_compiler }}-${{ hashFiles('**/*.cpp', '**/*.h', '**/CMakeLists.txt') }}
-          restore-keys: |
-            cmake-${{ matrix.os }}-${{ matrix.c_compiler }}-
+          path: ${{ github.workspace }}/build
+          key: cmake-${{ runner.os }}-${{ matrix.c_compiler }}-${{ hashFiles('**/CMakeLists.txt') }}
+          restore-keys: cmake-${{ runner.os }}-${{ matrix.c_compiler }}-
 
       # ---------------------------------------------------------
-      # Install dependencies
+      # Dependencies
       # ---------------------------------------------------------
       - name: Install OpenMP + HDF5 (Ubuntu)
         if: startsWith(matrix.os, 'ubuntu')
@@ -130,17 +123,18 @@ jobs:
           brew update
           brew install llvm libomp hdf5
 
-      - name: Setup MSYS2 + Install HDF5 (Windows GCC)
+      - name: Install MinGW + HDF5 (Windows GCC)
         if: (matrix.os == 'windows-latest' || matrix.os == 'windows-2022') && matrix.c_compiler == 'gcc'
-        uses: msys2/setup-msys2@v2
-        with:
-          msystem: UCRT64
-          update: true
-          path-type: inherit
-          install: >-
-            mingw-w64-ucrt-x86_64-gcc
-            mingw-w64-ucrt-x86_64-cmake
-            mingw-w64-ucrt-x86_64-hdf5
+        shell: bash
+        run: |
+          choco install msys2 -y || true
+          if [ -f "C:/tools/msys64/usr/bin/pacman" ]; then
+            C:/tools/msys64/usr/bin/pacman -Syu --noconfirm
+            C:/tools/msys64/usr/bin/pacman -S --noconfirm mingw-w64-x86_64-hdf5
+          elif [ -f "C:/msys64/usr/bin/pacman" ]; then
+            C:/msys64/usr/bin/pacman -Syu --noconfirm
+            C:/msys64/usr/bin/pacman -S --noconfirm mingw-w64-x86_64-hdf5
+          fi
 
       - name: Install vcpkg + HDF5 (Windows MSVC)
         if: (matrix.os == 'windows-latest' || matrix.os == 'windows-2022') && matrix.c_compiler == 'cl'
@@ -175,7 +169,7 @@ jobs:
 
       - name: Configure CMake (Windows MinGW)
         if: (matrix.os == 'windows-latest' || matrix.os == 'windows-2022') && matrix.c_compiler == 'gcc'
-        shell: msys2 {0}
+        shell: bash
         run: |
           cmake -G "MinGW Makefiles" \
             -B "${{ github.workspace }}/build" \
@@ -187,7 +181,8 @@ jobs:
       - name: Configure CMake (Windows MSVC)
         if: (matrix.os == 'windows-latest' || matrix.os == 'windows-2022') && matrix.c_compiler == 'cl'
         run: >
-          cmake -B ${{ steps.strings.outputs.build-output-dir }}
+          cmake -G "Visual Studio 17 2022" -A x64
+          -B ${{ steps.strings.outputs.build-output-dir }}
           -S ${{ github.workspace }}
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
           -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
@@ -201,13 +196,10 @@ jobs:
           -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
 
-      - name: Build (Windows MinGW)
-        if: (matrix.os == 'windows-latest' || matrix.os == 'windows-2022') && matrix.c_compiler == 'gcc'
-        shell: msys2 {0}
-        run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
-
-      - name: Build (Default)
-        if: "!((matrix.os == 'windows-latest' || matrix.os == 'windows-2022') && matrix.c_compiler == 'gcc')"
+      # ---------------------------------------------------------
+      # Build
+      # ---------------------------------------------------------
+      - name: Build
         run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
 
       # ---------------------------------------------------------
@@ -223,5 +215,7 @@ jobs:
       - name: Upload binaries
         uses: actions/upload-artifact@v4
         with:
-          name: next-${{ matrix.os }}-${{ matrix.c_compiler }}
-          path: ${{ github.workspace }}/next*
+          name: next-bin-${{ runner.os }}-${{ matrix.c_compiler }}
+          path: |
+            ${{ steps.strings.outputs.build-output-dir }}/next
+            ${{ steps.strings.outputs.build-output-dir }}/next.exe
