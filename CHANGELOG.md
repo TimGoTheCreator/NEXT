@@ -1,4 +1,4 @@
-# NEXT 2026.08.13
+# NEXT 2026.08.14
 #### Major changes:
 - **Gadget-Compliant HDF5 Export**: Upgraded HDF5 output with `/Header` metadata and separate `/PartType4` (Stars) and `/PartType1` (Dark Matter) groups.
 - **Fixed Dark Matter Reloading Bug**: Fixed issue where stars in HDF5 snapshots were converted to Dark Matter upon reloading.
