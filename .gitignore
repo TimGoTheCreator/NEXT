@@ -43,19 +43,35 @@ build/
 _build/
 __pycache__/
 *.pyc
+*.egg-info/
 
 # Simulation Data Outputs
 *.vtu
 *.vtk
 *.hdf5
+*.h5
+*.xdmf
 dump_*.vtu
 dump_*.vtk
 dump_*.hdf5
+simulation.h5
+simulation.xdmf
+log.txt
+*.log
+
+# Generated analysis plots
+*.png
+*.jpg
+*.svg
+
+# Temporary generated IC tables in examples (can be regenerated with python)
+examples/*/*.txt
+
+# Temporary commit logs & notes
+commit_history.txt
 
 # IDE & Editor folders
 .vscode/
 .idea/
 *.user
-
-# debug information files
-*.dwo
+.DS_Store

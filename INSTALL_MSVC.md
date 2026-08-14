@@ -7,7 +7,7 @@ This guide covers building **NEXT** on Windows using **Microsoft Visual Studio (
 ## Prerequisites
 
 - **Visual Studio 2022** (with *Desktop development with C++* workload)
-- **CMake** (>= 3.10)
+- **CMake** (>= 3.16)
 - **Git**
 - **Python 3** (for initial condition generation)
 - **HDF5** (installed via MSYS2, vcpkg, or official installer)

@@ -7,7 +7,7 @@ This guide covers building **NEXT** on Linux distributions.
 ## Prerequisites
 
 - **Git**
-- **CMake** (>= 3.10)
+- **CMake** (>= 3.16)
 - **GCC / Clang** (with OpenMP support)
 - **HDF5** development libraries
 - **Python 3**

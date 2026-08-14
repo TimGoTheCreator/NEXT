@@ -23,7 +23,7 @@ Arguments parse_arguments(int argc, char** argv, int rank) {
     if (argc < 6 || argc > 7) {
         // Only rank 0 prints usage
         if (rank == 0) {
-            std::cerr << "Usage: next <input.txt> <threads> <dt> <dump_interval> <vtk|vtu|hdf5> "
+            std::cerr << "Usage: next <input.txt> <threads> <dt> <dump_interval> <vtk|vtu|hdf5|hdf5-single> "
                          "[max_steps]\n";
         }
 
@@ -48,9 +48,11 @@ Arguments parse_arguments(int argc, char** argv, int rank) {
         args.format = OutputFormat::VTU;
     } else if (fmt == "hdf5") {
         args.format = OutputFormat::HDF5;
+    } else if (fmt == "hdf5-single" || fmt == "hdf5_single" || fmt == "h5single" || fmt == "h5") {
+        args.format = OutputFormat::HDF5_SINGLE;
     } else {
         if (rank == 0) {
-            std::cerr << "Choose a file format: vtk, vtu, or hdf5\n";
+            std::cerr << "Choose a file format: vtk, vtu, hdf5, or hdf5-single\n";
         }
 #ifdef NEXT_MPI
         MPI_Finalize();

@@ -1,7 +1,7 @@
 # Configuration file for readthedocs.
 
 project = 'NEXT'
-author = 'Timofiy Zakharchuk'
+author = 'Tymofiy Zakharchuk'
 release = '2026.08.12'
 
 extensions = [

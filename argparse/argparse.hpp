@@ -3,7 +3,7 @@
 
 namespace next {
 
-enum class OutputFormat { VTK, VTU, HDF5 };
+enum class OutputFormat { VTK, VTU, HDF5, HDF5_SINGLE };
 
 struct Arguments {
     std::string input_file;

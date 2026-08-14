@@ -23,25 +23,27 @@
  * @brief Octree node structure redesigned for Structure of Arrays (SoA).
  * Instead of storing Particle pointers, it stores indices into the ParticleSystem.
  */
+struct OctreePool;
+
 struct Octree {
-    real cx, cy, cz;  // Center of Mass
-    real m;           // Total Mass
-    real x, y, z;     // Geometric center of node
-    real size;        // Half-width of node
+    real cx = 0, cy = 0, cz = 0;  // Center of Mass
+    real m = 0;           // Total Mass
+    real cbrt_m = 0;      // Cube root of mass precomputed for fast softening
+    real x = 0, y = 0, z = 0;     // Geometric center of node
+    real size = 0;        // Half-width of node
     bool leaf = true;
 
     // Index of the particle in the ParticleSystem. -1 means empty.
     int bodyIdx = -1;
 
-    // Ownership: unique_ptr handles memory automatically
-    std::unique_ptr<Octree> child[8] = {nullptr};
+    Octree* child[8] = {nullptr};
 
     // Quadrupole tensor for higher-order gravity approximation
     real Qxx = 0, Qyy = 0, Qzz = 0;
     real Qxy = 0, Qxz = 0, Qyz = 0;
 
-    Octree(real X, real Y, real Z, real S)
-        : cx(0), cy(0), cz(0), m(0), x(X), y(Y), z(Z), size(S) {}
+    Octree() = default;
+    Octree(real X, real Y, real Z, real S) : x(X), y(Y), z(Z), size(S) {}
 
     ~Octree() = default;
 
@@ -53,36 +55,9 @@ struct Octree {
     }
 
     /**
-     * @brief Creates a new child node in the specified octant.
+     * @brief Inserts a particle index into the tree using an arena pool.
      */
-    std::unique_ptr<Octree> createChild(int idx) {
-        real hs = size * real(0.5);
-        return std::make_unique<Octree>(x + ((idx & 1) ? hs : -hs), y + ((idx & 2) ? hs : -hs),
-                                        z + ((idx & 4) ? hs : -hs), hs);
-    }
-
-    /**
-     * @brief Inserts a particle index into the tree.
-     */
-    void insert(int idx, const ParticleSystem& ps) {
-        if (leaf && bodyIdx == -1) {
-            bodyIdx = idx;
-            return;
-        }
-
-        if (leaf) {
-            leaf = false;
-            int oldIdx = bodyIdx;
-            bodyIdx = -1;
-            int oct = getOctant(ps.x[oldIdx], ps.y[oldIdx], ps.z[oldIdx]);
-            if (!child[oct]) child[oct] = createChild(oct);
-            child[oct]->insert(oldIdx, ps);
-        }
-
-        int oct = getOctant(ps.x[idx], ps.y[idx], ps.z[idx]);
-        if (!child[oct]) child[oct] = createChild(oct);
-        child[oct]->insert(idx, ps);
-    }
+    void insert(int idx, const ParticleSystem& ps, OctreePool& pool, int depth = 0);
 
     /**
      * @brief Recursively computes mass properties and quadrupole moments.
@@ -91,11 +66,13 @@ struct Octree {
         if (leaf) {
             if (bodyIdx != -1) {
                 m = ps.m[bodyIdx];
+                cbrt_m = std::cbrt(m);
                 cx = ps.x[bodyIdx];
                 cy = ps.y[bodyIdx];
                 cz = ps.z[bodyIdx];
             } else {
                 m = 0;
+                cbrt_m = 0;
                 cx = cy = cz = 0;
             }
             Qxx = Qyy = Qzz = Qxy = Qxz = Qyz = 0;
@@ -104,7 +81,7 @@ struct Octree {
 
         m = 0;
         cx = cy = cz = 0;
-        for (auto& c : child) {
+        for (auto* c : child) {
             if (!c) continue;
             c->computeMass(ps);
             if (c->m == 0) continue;
@@ -117,10 +94,13 @@ struct Octree {
             cx /= m;
             cy /= m;
             cz /= m;
+            cbrt_m = std::cbrt(m);
+        } else {
+            cbrt_m = 0;
         }
 
         Qxx = Qyy = Qzz = Qxy = Qxz = Qyz = 0;
-        for (auto& c : child) {
+        for (auto* c : child) {
             if (!c || c->m == 0) continue;
             real rx = c->cx - cx;
             real ry = c->cy - cy;
@@ -137,6 +117,56 @@ struct Octree {
     }
 };
 
+struct OctreePool {
+    std::vector<std::unique_ptr<Octree>> storage;
+    size_t cursor = 0;
+
+    void reset() {
+        cursor = 0;
+    }
+
+    Octree* createNode(real X, real Y, real Z, real S) {
+        if (cursor >= storage.size()) {
+            storage.push_back(std::make_unique<Octree>(X, Y, Z, S));
+        } else {
+            *storage[cursor] = Octree(X, Y, Z, S);
+        }
+        return storage[cursor++].get();
+    }
+};
+
+inline void Octree::insert(int idx, const ParticleSystem& ps, OctreePool& pool, int depth) {
+    if (depth >= 30 || size < real(1e-10)) {
+        return;
+    }
+
+    if (leaf && bodyIdx == -1) {
+        bodyIdx = idx;
+        return;
+    }
+
+    if (leaf) {
+        leaf = false;
+        int oldIdx = bodyIdx;
+        bodyIdx = -1;
+        int oct = getOctant(ps.x[oldIdx], ps.y[oldIdx], ps.z[oldIdx]);
+        if (!child[oct]) {
+            real hs = size * real(0.5);
+            child[oct] = pool.createNode(x + ((oct & 1) ? hs : -hs), y + ((oct & 2) ? hs : -hs),
+                                         z + ((oct & 4) ? hs : -hs), hs);
+        }
+        child[oct]->insert(oldIdx, ps, pool, depth + 1);
+    }
+
+    int oct = getOctant(ps.x[idx], ps.y[idx], ps.z[idx]);
+    if (!child[oct]) {
+        real hs = size * real(0.5);
+        child[oct] = pool.createNode(x + ((oct & 1) ? hs : -hs), y + ((oct & 2) ? hs : -hs),
+                                     z + ((oct & 4) ? hs : -hs), hs);
+    }
+    child[oct]->insert(idx, ps, pool, depth + 1);
+}
+
 /**
  * @brief Barnes-Hut acceleration calculation for a target particle at index 'i'.
  */
@@ -150,43 +180,38 @@ inline void bhAccel(Octree* node, int i, const ParticleSystem& ps, real theta, r
     real dy = node->cy - ps.y[i];
     real dz = node->cz - ps.z[i];
     real r2 = dx * dx + dy * dy + dz * dz;
-    real dist = std::sqrt(r2 + real(1e-20));
 
-    // Adaptive softening for Dark Matter (type 1) vs Stars (type 0)
-    real eps = nextSoftening(node->size, node->m, dist);
-    if (ps.type[i] == 1) {
-        eps = std::max(eps, 2.0 * node->size / std::pow(node->m / ps.m[i], 0.333333333));
-    }
-
-    real r2_soft = r2 + eps * eps;
-    real dist_inv = real(1.0) / std::sqrt(r2_soft);
-
-    if (node->leaf || (node->size / dist) < theta) {
-        real inv3 = dist_inv * dist_inv * dist_inv;
-        real fac = G * node->m * inv3;
-
-        ax += dx * fac;
-        ay += dy * fac;
-        az += dz * fac;
-
-        // Quadrupole contributions
-        real inv5 = inv3 * (dist_inv * dist_inv);
-        real inv7 = inv5 * (dist_inv * dist_inv);
-
-        real q = node->Qxx * dx * dx + node->Qyy * dy * dy + node->Qzz * dz * dz +
-                 2 * (node->Qxy * dx * dy + node->Qxz * dx * dz + node->Qyz * dy * dz);
-
-        real Qrx = 2 * (node->Qxx * dx + node->Qxy * dy + node->Qxz * dz);
-        real Qry = 2 * (node->Qxy * dx + node->Qyy * dy + node->Qyz * dz);
-        real Qrz = 2 * (node->Qxz * dx + node->Qyz * dy + node->Qzz * dz);
-
-        ax += (G * real(0.5)) * (Qrx * inv5 - 5 * q * inv7 * dx);
-        ay += (G * real(0.5)) * (Qry * inv5 - 5 * q * inv7 * dy);
-        az += (G * real(0.5)) * (Qrz * inv5 - 5 * q * inv7 * dz);
+    const real open_r2 = (node->size / theta) * (node->size / theta);
+    if (!node->leaf && r2 < open_r2) {
+        for (auto* c : node->child) {
+            if (c) bhAccel(c, i, ps, theta, ax, ay, az);
+        }
         return;
     }
 
-    for (auto& c : node->child) {
-        if (c) bhAccel(c.get(), i, ps, theta, ax, ay, az);
-    }
+    constexpr real eps = real(0.05);
+    real r2_soft = r2 + eps * eps;
+    real dist_inv = real(1.0) / std::sqrt(r2_soft);
+
+    real inv3 = dist_inv * dist_inv * dist_inv;
+    real fac = G * node->m * inv3;
+
+    ax += dx * fac;
+    ay += dy * fac;
+    az += dz * fac;
+
+    // Quadrupole contributions
+    real inv5 = inv3 * (dist_inv * dist_inv);
+    real inv7 = inv5 * (dist_inv * dist_inv);
+
+    real q = node->Qxx * dx * dx + node->Qyy * dy * dy + node->Qzz * dz * dz +
+             2 * (node->Qxy * dx * dy + node->Qxz * dx * dz + node->Qyz * dy * dz);
+
+    real Qrx = 2 * (node->Qxx * dx + node->Qxy * dy + node->Qxz * dz);
+    real Qry = 2 * (node->Qxy * dx + node->Qyy * dy + node->Qzz * dz);
+    real Qrz = 2 * (node->Qxz * dx + node->Qyz * dy + node->Qzz * dz);
+
+    ax += (G * real(0.5)) * (Qrx * inv5 - 5 * q * inv7 * dx);
+    ay += (G * real(0.5)) * (Qry * inv5 - 5 * q * inv7 * dy);
+    az += (G * real(0.5)) * (Qrz * inv5 - 5 * q * inv7 * dz);
 }

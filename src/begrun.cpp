@@ -20,6 +20,7 @@
 #include "dt/adaptive.h"
 #include "floatdef.h"
 #include "gravity/step.h"
+#include "io/async_writer.h"
 #include "io/hdf5_save.h"
 #include "io/load_particle.hpp"
 #include "io/vtk_save.h"
@@ -91,66 +92,77 @@ int main(int argc, char** argv) {
 
     // Load particles
     Particle particles = LoadParticlesFromFile(args.input_file);
-    if (rank == 0 && omp_get_thread_num() == 0) {
-        std::cout << " Particles: " << particles.size() << std::endl;
-    }
+    log_once(rank, " Particles: " + std::to_string(particles.size()));
 
     real simTime = 0;
     real nextDump = 0;
-    int step = 0;
+    int force_step = 0;
+    int dump_count = 0;
     char command;
 
+    next::AsyncWriter async_writer;
+
     while (true) {
-        if (args.max_steps > 0 && step >= args.max_steps) {
-            if (rank == 0 && omp_get_thread_num() == 0) {
-                std::cout << "Reached maximum steps (" << args.max_steps << "). Exiting..."
-                          << std::endl;
-            }
+        if (args.max_steps > 0 && dump_count >= args.max_steps) {
+            log_once(rank, "Reached maximum dumps (" + std::to_string(args.max_steps) + "). Exiting...");
             break;
         }
 
         real dtAdaptive = computeAdaptiveDt(particles, args.dt);
         Step(particles, dtAdaptive);
         simTime += dtAdaptive;
+        force_step++;
 
-        if (simTime >= nextDump) {
-            std::string out = "dump_" + std::to_string(step);
+        bool should_dump = false;
+        if (args.dump_interval >= 1.0) {
+            int step_freq = static_cast<int>(args.dump_interval);
+            if (force_step % step_freq == 0 || force_step == 1) {
+                should_dump = true;
+            }
+        } else {
+            if (simTime >= nextDump) {
+                should_dump = true;
+                nextDump += args.dump_interval;
+            }
+        }
+
+        if (should_dump) {
+            std::string out = "dump_" + std::to_string(dump_count);
 
             switch (args.format) {
                 case OutputFormat::VTK:
                     out += ".vtk";
-                    SaveVTK(particles, out);
                     break;
                 case OutputFormat::VTU:
                     out += ".vtu";
-                    SaveVTU(particles, out);
                     break;
                 case OutputFormat::HDF5:
                     out += ".hdf5";
-                    SaveHDF5(particles, out);
+                    break;
+                case OutputFormat::HDF5_SINGLE:
+                    out = "simulation.h5";
                     break;
             }
 
-            if (rank == 0 && omp_get_thread_num() == 0) {
-                std::cout << "[Dump " << step << "] t = " << simTime << ", file: " << out
-                          << std::endl;
-            }
+            async_writer.enqueue(particles, out, args.format, dump_count, simTime);
 
-            nextDump += args.dump_interval;
-            step++;
+            log_once(rank, "[Dump " + std::to_string(dump_count) + "] step = " + std::to_string(force_step) + ", t = " + std::to_string(simTime) + ", file: " + out);
+
+            dump_count++;
         }
 
         // Non-blocking exit check
         if (std::cin.rdbuf()->in_avail() > 0) {
             std::cin >> command;
             if (command == 'q' || command == 'Q') {
-                if (rank == 0 && omp_get_thread_num() == 0) {
-                    std::cout << "Exiting..." << std::endl;
-                }
+                log_once(rank, "Exiting...");
                 break;
             }
         }
     }
+
+    async_writer.flush();
+
 
 #ifdef NEXT_MPI
     MPI_Finalize();

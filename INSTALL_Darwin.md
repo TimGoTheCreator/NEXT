@@ -8,7 +8,7 @@ This guide covers building **NEXT** on macOS using **Clang** / **Apple Clang** o
 
 - **Homebrew**
 - **Git**
-- **CMake** (>= 3.10)
+- **CMake** (>= 3.16)
 - **Python 3**
 
 ---

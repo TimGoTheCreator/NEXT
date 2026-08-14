@@ -7,7 +7,7 @@ This guide covers building **NEXT** on Windows using **MinGW-w64 GCC** via **MSY
 ## Prerequisites
 
 - **MSYS2** (MinGW-w64 environment)
-- **CMake** (>= 3.10)
+- **CMake** (>= 3.16)
 - **Git**
 - **Python 3**
 

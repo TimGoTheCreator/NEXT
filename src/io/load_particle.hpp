@@ -12,6 +12,7 @@
 #include <hdf5.h>
 
 #include <fstream>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -97,19 +98,24 @@ Particle LoadParticlesFromFile(const std::string& filename) {
 
     // --- Fallback: plain text loader ---
     std::ifstream in(filename);
-    real tx, ty, tz, tvx, tvy, tvz, tm;
-    int tt;
-
-    // Read column by column and push into SoA lanes
-    while (in >> tx >> ty >> tz >> tvx >> tvy >> tvz >> tm >> tt) {
-        p.x.push_back(tx);
-        p.y.push_back(ty);
-        p.z.push_back(tz);
-        p.vx.push_back(tvx);
-        p.vy.push_back(tvy);
-        p.vz.push_back(tvz);
-        p.m.push_back(tm);
-        p.type.push_back(tt);
+    std::string line;
+    while (std::getline(in, line)) {
+        if (line.empty()) continue;
+        std::stringstream ss(line);
+        real tx, ty, tz, tvx, tvy, tvz, tm;
+        int tt = 0;  // Default to 0 (Stars/Baryons) if 8th column is omitted
+        if (ss >> tx >> ty >> tz >> tvx >> tvy >> tvz >> tm) {
+            ss >> tt;  // Try to read optional 8th column
+            p.x.push_back(tx);
+            p.y.push_back(ty);
+            p.z.push_back(tz);
+            p.vx.push_back(tvx);
+            p.vy.push_back(tvy);
+            p.vz.push_back(tvz);
+            p.m.push_back(tm);
+            p.type.push_back(tt);
+        }
     }
     return p;
 }
+

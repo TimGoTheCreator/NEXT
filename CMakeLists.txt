@@ -23,6 +23,7 @@ option(NEXT_NATIVE_ARCH "Enable architecture-native host CPU optimizations (-mar
 option(NEXT_ENABLE_LTO "Enable Link-Time Optimization / Interprocedural Optimization" OFF)
 option(ENABLE_VEC_REPORT "Enable compiler vectorization reports" OFF)
 option(NEXT_COPY_TO_CMAKE_SOURCE_DIR "Copy final executable to CMake source directory" ON)
+option(NEXT_BENCHMARK "Enable step benchmark timing and logging to log.txt" OFF)
 
 # ==============================================================================
 # Precision Mode Validation
@@ -54,7 +55,7 @@ target_include_directories(next PRIVATE
 )
 
 # ==============================================================================
-# Precision Compile Definitions
+# Precision & Feature Compile Definitions
 # ==============================================================================
 if(NEXT_FP32)
     target_compile_definitions(next PRIVATE NEXT_FP32)
@@ -62,6 +63,11 @@ if(NEXT_FP32)
 elseif(NEXT_FP64)
     target_compile_definitions(next PRIVATE NEXT_FP64)
     message(STATUS "[NEXT HPC] Precision: FP64 (Double Precision)")
+endif()
+
+if(NEXT_BENCHMARK)
+    target_compile_definitions(next PRIVATE NEXT_BENCHMARK)
+    message(STATUS "[NEXT HPC] Benchmark logging enabled (NEXT_BENCHMARK)")
 endif()
 
 # ==============================================================================

@@ -16,6 +16,7 @@
 #include <memory>
 
 #include "floatdef.h"
+#include "nfw.h"
 #include "octree.h"
 #include "struct/particle.h"
 #ifdef NEXT_MPI
@@ -66,7 +67,11 @@ inline void Step(ParticleSystem& ps, real dt) {
     }
 #endif
 
-    auto buildTree = [&]() -> std::unique_ptr<Octree> {
+    static thread_local OctreePool pool;
+
+    auto buildTree = [&]() -> Octree* {
+        pool.reset();
+
         struct BBox {
             real minx, miny, minz, maxx, maxy, maxz;
         };
@@ -102,9 +107,9 @@ inline void Step(ParticleSystem& ps, real dt) {
 
         if (size <= real(0)) size = real(1.0);
 
-        auto root = std::make_unique<Octree>(cx, cy, cz, size);
+        Octree* root = pool.createNode(cx, cy, cz, size);
 
-        for (int i = 0; i < N; ++i) root->insert(i, ps);
+        for (int i = 0; i < N; ++i) root->insert(i, ps, pool);
 
         root->computeMass(ps);
         return root;
@@ -117,7 +122,7 @@ inline void Step(ParticleSystem& ps, real dt) {
 #pragma omp parallel for schedule(dynamic, 64)
         for (int i = start; i < end; ++i) {
             real ax = real(0), ay = real(0), az = real(0);
-            bhAccel(root.get(), i, ps, theta, ax, ay, az);
+            bhAccel(root, i, ps, theta, ax, ay, az);
 
             ps.vx[i] += ax * half;
             ps.vy[i] += ay * half;
@@ -162,7 +167,7 @@ inline void Step(ParticleSystem& ps, real dt) {
 #pragma omp parallel for schedule(dynamic, 64)
         for (int i = start; i < end; ++i) {
             real ax = real(0), ay = real(0), az = real(0);
-            bhAccel(root.get(), i, ps, theta, ax, ay, az);
+            bhAccel(root, i, ps, theta, ax, ay, az);
 
             ps.vx[i] += ax * half;
             ps.vy[i] += ay * half;
@@ -185,10 +190,6 @@ inline void Step(ParticleSystem& ps, real dt) {
     auto t_end = std::chrono::high_resolution_clock::now();
     double elapsed_ms = std::chrono::duration<double, std::milli>(t_end - t_start).count();
 
-    int rank = 0;
-#ifdef NEXT_MPI
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-#endif
     if (rank == 0) {
         std::ofstream log("log.txt", std::ios::app);
         log << "Step time: " << elapsed_ms << " ms" << std::endl;
