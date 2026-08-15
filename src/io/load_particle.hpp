@@ -90,8 +90,12 @@ Particle LoadParticlesFromFile(const std::string& filename) {
     // --- Try HDF5 first ---
     hid_t file = H5Fopen(filename.c_str(), H5F_ACC_RDONLY, H5P_DEFAULT);
     if (file >= 0) {
-        LoadPartType(file, "PartType1", 1, p);  // DM
-        LoadPartType(file, "PartType4", 0, p);  // Stars
+        LoadPartType(file, "PartType0", 0, p);  // Gas / Stars / Baryons
+        LoadPartType(file, "PartType1", 1, p);  // Halo Dark Matter
+        LoadPartType(file, "PartType2", 0, p);  // Disk Stars
+        LoadPartType(file, "PartType3", 0, p);  // Bulge Stars
+        LoadPartType(file, "PartType4", 0, p);  // Star Particles
+        LoadPartType(file, "PartType5", 0, p);  // Black Holes / Sinks
         H5Fclose(file);
         return p;
     }
