@@ -98,15 +98,6 @@ jobs:
           key: vcpkg-${{ matrix.os }}-${{ hashFiles('**/CMakeLists.txt') }}
           restore-keys: vcpkg-${{ matrix.os }}-
 
-      # ---------------------------------------------------------
-      # CACHE: CMake build directory
-      # ---------------------------------------------------------
-      - name: Cache CMake build
-        uses: actions/cache@v4
-        with:
-          path: ${{ github.workspace }}/build
-          key: cmake-${{ runner.os }}-${{ matrix.c_compiler }}-${{ hashFiles('**/CMakeLists.txt') }}
-          restore-keys: cmake-${{ runner.os }}-${{ matrix.c_compiler }}-
 
       # ---------------------------------------------------------
       # Dependencies

@@ -56,16 +56,6 @@ jobs:
         run: |
           sudo apt-get install -y libomp-dev libhdf5-dev
 
-      # ------------------------
-      # Cache CMake build directory
-      # ------------------------
-      - name: Cache CMake build
-        uses: actions/cache@v4
-        with:
-          path: build
-          key: cmake-icx-${{ runner.os }}-${{ hashFiles('**/*.cpp', '**/*.h', '**/CMakeLists.txt') }}
-          restore-keys: |
-            cmake-icx-${{ runner.os }}-
 
       # ------------------------
       # Configure CMake with ICX
