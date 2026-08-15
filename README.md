@@ -1,3 +1,8 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/TimGoTheCreator/timgothecreator.github.io/master/images/thumbs/hero_banner_best.png" alt="NEXT" width="100%">
+</p>
+
+
 # NEXT: Newtonian EXact Trajectories
 
 [![Build Status](https://img.shields.io/github/actions/workflow/status/TimGoTheCreator/NEXT/cmake-multi-platform.yml?branch=main)](https://github.com/TimGoTheCreator/NEXT/actions)
