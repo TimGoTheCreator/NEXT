@@ -12,6 +12,7 @@ struct Arguments {
     double dump_interval;
     OutputFormat format;
     int max_steps = -1;
+    bool restart = false;
 };
 
 Arguments parse_arguments(int argc, char** argv, int rank);

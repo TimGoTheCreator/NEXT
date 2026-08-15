@@ -232,31 +232,68 @@ void SaveHDF5SingleStep(const ParticleSystem& ps, const std::string& filename, i
         }
     }
 
-    hid_t file;
+    hid_t file = -1;
     if (step == 0) {
         file = H5Fcreate(filename.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
     } else {
         file = H5Fopen(filename.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
+        if (file < 0) {
+            file = H5Fcreate(filename.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+        }
     }
 
     if (file < 0) return;
 
     std::string snap_name = "Snap_" + std::to_string(step);
+    // If group already exists, delete or open it safely
+    if (H5Lexists(file, snap_name.c_str(), H5P_DEFAULT) > 0) {
+        H5Ldelete(file, snap_name.c_str(), H5P_DEFAULT);
+    }
+
     hid_t snap_group = H5Gcreate(file, snap_name.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
     if (snap_group >= 0) {
+        hsize_t dims1[1] = {1};
+        hid_t space1 = H5Screate_simple(1, dims1, NULL);
+        hid_t attr = H5Acreate(snap_group, "Time", H5T_NATIVE_DOUBLE, space1, H5P_DEFAULT, H5P_DEFAULT);
+        if (attr >= 0) {
+            H5Awrite(attr, H5T_NATIVE_DOUBLE, &time);
+            H5Aclose(attr);
+        }
+        H5Sclose(space1);
+
         hid_t h5_real_type = (sizeof(real) == 4) ? H5T_NATIVE_FLOAT : H5T_NATIVE_DOUBLE;
         WritePartTypeGroup(snap_group, "PartType1", ps, dm_indices, h5_real_type);
         WritePartTypeGroup(snap_group, "PartType4", ps, stars_indices, h5_real_type);
         H5Gclose(snap_group);
     }
 
-    H5Fclose(file);
-
     // --- TEMPORAL XDMF SIDECAR FOR PARAVIEW TIME SLIDER ---
     std::string xdmf_filename = filename.substr(0, filename.find_last_of('.')) + ".xdmf";
     static std::vector<std::pair<int, double>> time_history;
-    if (step == 0) time_history.clear();
+    if (step == 0) {
+        time_history.clear();
+    } else if (time_history.empty()) {
+        // Recover prior snapshot times if restarting
+        for (int s = 0; s < step; s++) {
+            std::string prev_snap = "Snap_" + std::to_string(s);
+            if (H5Lexists(file, prev_snap.c_str(), H5P_DEFAULT) > 0) {
+                hid_t s_grp = H5Gopen(file, prev_snap.c_str(), H5P_DEFAULT);
+                double t_prev = static_cast<double>(s);
+                if (s_grp >= 0) {
+                    if (H5Aexists(s_grp, "Time") > 0) {
+                        hid_t attr = H5Aopen(s_grp, "Time", H5P_DEFAULT);
+                        H5Aread(attr, H5T_NATIVE_DOUBLE, &t_prev);
+                        H5Aclose(attr);
+                    }
+                    H5Gclose(s_grp);
+                }
+                time_history.push_back({s, t_prev});
+            }
+        }
+    }
     time_history.push_back({step, time});
+
+    H5Fclose(file);
 
     std::ofstream xmf(xdmf_filename);
     xmf << "<?xml version=\"1.0\" ?>\n<Xdmf Version=\"3.0\">\n  <Domain>\n";

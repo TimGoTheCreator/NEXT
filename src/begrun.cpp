@@ -85,19 +85,33 @@ int main(int argc, char** argv) {
 #elif defined(NEXT_FP32)
         std::cout << " Precision: FP32" << std::endl;
 #endif
+        if (args.restart) {
+            std::cout << " Mode:      Restart / Continue" << std::endl;
+        }
         if (args.max_steps > 0) {
             std::cout << " Max Steps: " << args.max_steps << std::endl;
         }
     }
 
+    double restored_time = 0.0;
+    int restored_dump = 0;
+
     // Load particles
-    Particle particles = LoadParticlesFromFile(args.input_file);
+    Particle particles = LoadParticlesFromFile(args.input_file, &restored_time, &restored_dump);
     log_once(rank, " Particles: " + std::to_string(particles.size()));
 
-    real simTime = 0;
-    real nextDump = 0;
-    int force_step = 0;
+    real simTime = 0.0;
     int dump_count = 0;
+
+    if (args.restart) {
+        simTime = static_cast<real>(restored_time);
+        dump_count = restored_dump;
+        log_once(rank, " [RESTART] Resuming from dump " + std::to_string(dump_count) +
+                       " (t = " + std::to_string(simTime) + ")");
+    }
+
+    real nextDump = (args.dump_interval >= 1.0) ? 0.0 : (simTime + args.dump_interval);
+    int force_step = 0;
     char command;
 
     next::AsyncWriter async_writer;
@@ -116,7 +130,7 @@ int main(int argc, char** argv) {
         bool should_dump = false;
         if (args.dump_interval >= 1.0) {
             int step_freq = static_cast<int>(args.dump_interval);
-            if (force_step % step_freq == 0 || force_step == 1) {
+            if (force_step % step_freq == 0 || (!args.restart && force_step == 1)) {
                 should_dump = true;
             }
         } else {
