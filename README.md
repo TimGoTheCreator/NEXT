@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://timgothecreator.github.io/images/hero_banner_transparent.png" alt="NEXT" width="80%">
+  <img src="https://timgothecreator.github.io/images/hero_banner_transparent.png" alt="NEXT" width="90%">
 </p>
 
 
