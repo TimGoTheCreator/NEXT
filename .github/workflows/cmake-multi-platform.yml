@@ -127,15 +127,15 @@ jobs:
             C:/msys64/usr/bin/pacman -S --noconfirm mingw-w64-x86_64-hdf5
           fi
 
+      - name: Set up MSVC environment
+        if: (matrix.os == 'windows-latest' || matrix.os == 'windows-2022') && matrix.c_compiler == 'cl'
+        uses: ilammy/msvc-dev-cmd@v1
+
       - name: Install vcpkg + HDF5 (Windows MSVC)
         if: (matrix.os == 'windows-latest' || matrix.os == 'windows-2022') && matrix.c_compiler == 'cl'
         shell: powershell
         run: |
-          if (!(Test-Path "C:/vcpkg")) {
-            git clone https://github.com/microsoft/vcpkg.git C:/vcpkg
-            C:/vcpkg/bootstrap-vcpkg.bat
-          }
-          C:/vcpkg/vcpkg install hdf5[hl]:x64-windows
+          vcpkg install hdf5[hl]:x64-windows
 
       # ---------------------------------------------------------
       # Set build directory
@@ -171,12 +171,12 @@ jobs:
 
       - name: Configure CMake (Windows MSVC)
         if: (matrix.os == 'windows-latest' || matrix.os == 'windows-2022') && matrix.c_compiler == 'cl'
+        shell: powershell
         run: >
-          cmake -G "Visual Studio 17 2022" -A x64
-          -B ${{ steps.strings.outputs.build-output-dir }}
+          cmake -B ${{ steps.strings.outputs.build-output-dir }}
           -S ${{ github.workspace }}
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-          -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
+          -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake"
 
       - name: Configure CMake (Linux)
         if: startsWith(matrix.os, 'ubuntu')
