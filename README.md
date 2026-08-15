@@ -1,6 +1,7 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/TimGoTheCreator/timgothecreator.github.io/master/images/thumbs/hero_banner_best.png" alt="NEXT" width="100%">
+  <img src="https://timgothecreator.github.io/images/hero_banner_transparent.png" alt="NEXT" width="100%">
 </p>
+
 
 
 # NEXT: Newtonian EXact Trajectories
