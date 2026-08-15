@@ -1,6 +1,7 @@
 <p align="center">
-  <img src="https://timgothecreator.github.io/images/hero_banner_transparent.png" alt="NEXT" width="100%">
+  <img src="https://timgothecreator.github.io/images/hero_banner_transparent.png" alt="NEXT" width="80%">
 </p>
+
 
 
 
