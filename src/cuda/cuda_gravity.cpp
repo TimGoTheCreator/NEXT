@@ -269,8 +269,15 @@ static bool init_jit_cuda() {
     nvrtcProgram prog;
     if (nvrtcCreateProgram(&prog, k_next_octree_kernel, "octree_gravity.cu", 0, NULL, NULL) != NVRTC_SUCCESS) return false;
 
-    const char* opts[] = { "--gpu-architecture=compute_89", "-use_fast_math" };
-    nvrtcResult compile_res = nvrtcCompileProgram(prog, 2, opts);
+    const char* opts[] = {
+        "--gpu-architecture=compute_89",
+        "-use_fast_math",
+        "-prec-div=false",
+        "-prec-sqrt=false",
+        "-ftz=true",
+        "--fmad=true"
+    };
+    nvrtcResult compile_res = nvrtcCompileProgram(prog, 6, opts);
     if (compile_res != NVRTC_SUCCESS) {
         size_t log_size = 0;
         nvrtcGetProgramLogSize(prog, &log_size);
