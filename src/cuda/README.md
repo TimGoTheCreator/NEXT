@@ -1,24 +1,23 @@
-# Experimental CUDA Gravity Engine for NEXT 🚀⚡
+# Experimental CUDA Gravity Engine for NEXT
 
-This folder contains experimental GPU-accelerated gravitational solvers for the **NEXT** N-body simulation engine.
+This directory contains GPU-accelerated gravitational solvers for the **NEXT** N-body simulation framework.
 
 ---
 
-## 📂 Architecture Overview:
+## Architecture Overview:
 
 1. **[`cuda_gravity.h`](file:///c:/n2/next/src/cuda/cuda_gravity.h)**:
    - Interface header declaring `is_cuda_available()` and `compute_gravity_cuda(...)`.
-   - Defines `GPUNode`: 32-byte cache-aligned linear node struct with quadrupole moments and stackless sibling pointers.
+   - Defines `GPUNode`: 96-byte cache-aligned linear node struct with quadrupole moments and stackless traversal pointers.
 
-2. **[`cuda_gravity.cu`](file:///c:/n2/next/src/cuda/cuda_gravity.cu)**:
-   - **`kernel_direct_gravity_tiled`**: High-throughput shared-memory tiled gravity solver running at full warp parallelism.
-   - **`kernel_octree_gravity`**: Stackless GPU tree traversal kernel with Multipole Acceptance Criteria (MAC).
-   - Graceful fallback stub when compiled on systems without NVIDIA `nvcc`.
+2. **[`cuda_gravity.cpp`](file:///c:/n2/next/src/cuda/cuda_gravity.cpp)**:
+   - **`kernel_octree_gravity`**: GPU Barnes-Hut octree traversal kernel with Multipole Acceptance Criteria (MAC) and quadrupole moment corrections.
+   - NVRTC runtime compilation and CUDA driver API execution with automatic fallback to host CPU OpenMP solver.
 
 ---
 
-## 🛠️ How to Enable in CMake:
-When configuring CMake on a machine with the NVIDIA CUDA Toolkit installed:
+## How to Enable in CMake:
+When configuring CMake on a machine with NVIDIA GPU hardware:
 
 ```powershell
 cmake -B build -DNEXT_ENABLE_CUDA=ON
