@@ -48,6 +48,15 @@ file(GLOB ARGPARSE_FILES ${CMAKE_SOURCE_DIR}/argparse/*.cpp)
 
 add_executable(next ${SRC_FILES} ${ARGPARSE_FILES})
 
+# 16 MB Thread Stack to prevent Windows kernel stack exhaustion on deep Octree recursion
+if(WIN32)
+    if(MSVC)
+        target_link_options(next PRIVATE "/STACK:16777216")
+    else()
+        target_link_options(next PRIVATE "-Wl,--stack,16777216")
+    endif()
+endif()
+
 target_include_directories(next PRIVATE
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/src
