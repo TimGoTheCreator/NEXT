@@ -28,7 +28,9 @@
 #include <chrono>
 #include <fstream>
 
-inline void Step(ParticleSystem& ps, real dt) {
+#include "pm_solver.h"
+
+inline void Step(ParticleSystem& ps, real dt, bool use_treepm = false, int pm_grid = 128, real r_split_param = real(0.0)) {
     if (ps.size() == 0) return;
 
 #ifdef NEXT_ENABLE_CUDA
@@ -40,21 +42,31 @@ inline void Step(ParticleSystem& ps, real dt) {
     const real half = dt * real(0.5);
     std::vector<float> ax, ay, az;
     static thread_local OctreePool cuda_pool;
+    static next::gravity::PMSolver pm_solver;
+    static bool pm_inited = false;
+
+    real minx = 1e30, miny = 1e30, minz = 1e30;
+    real maxx = -1e30, maxy = -1e30, maxz = -1e30;
+    for (int i = 0; i < N; ++i) {
+        minx = std::min(minx, ps.x[i]); miny = std::min(miny, ps.y[i]); minz = std::min(minz, ps.z[i]);
+        maxx = std::max(maxx, ps.x[i]); maxy = std::max(maxy, ps.y[i]); maxz = std::max(maxz, ps.z[i]);
+    }
+    const real cx = (minx + maxx) * real(0.5);
+    const real cy = (miny + maxy) * real(0.5);
+    const real cz = (minz + maxz) * real(0.5);
+    real size = std::max({maxx - minx, maxy - miny, maxz - minz}) * real(0.5);
+    if (size <= real(0)) size = real(1.0);
+
+    real box_size = size * real(2.5);
+    real r_split = (r_split_param > real(0.0)) ? r_split_param : (box_size / pm_grid * real(1.25));
+
+    if (use_treepm && (!pm_inited || pm_solver.get_grid_dim() != pm_grid)) {
+        pm_solver.init(pm_grid, box_size, r_split);
+        pm_inited = true;
+    }
 
     auto buildTreeGPU = [&]() -> Octree* {
         cuda_pool.reset();
-        real minx = 1e30, miny = 1e30, minz = 1e30;
-        real maxx = -1e30, maxy = -1e30, maxz = -1e30;
-        for (int i = 0; i < N; ++i) {
-            minx = std::min(minx, ps.x[i]); miny = std::min(miny, ps.y[i]); minz = std::min(minz, ps.z[i]);
-            maxx = std::max(maxx, ps.x[i]); maxy = std::max(maxy, ps.y[i]); maxz = std::max(maxz, ps.z[i]);
-        }
-        const real cx = (minx + maxx) * real(0.5);
-        const real cy = (miny + maxy) * real(0.5);
-        const real cz = (minz + maxz) * real(0.5);
-        real size = std::max({maxx - minx, maxy - miny, maxz - minz}) * real(0.5);
-        if (size <= real(0)) size = real(1.0);
-
         Octree* root = cuda_pool.createNode(cx, cy, cz, size);
         for (int i = 0; i < N; ++i) root->insert(i, ps, cuda_pool);
         root->computeMass(ps);
@@ -67,7 +79,18 @@ inline void Step(ParticleSystem& ps, real dt) {
     // If first step, compute initial acceleration
     if (!has_cached_accel || cached_ax.size() != static_cast<size_t>(N)) {
         auto root = buildTreeGPU();
-        next::cuda::compute_gravity_cuda(root, ps, 1.0f, 0.05f, 0.5f, cached_ax, cached_ay, cached_az);
+        float r_cut_cuda = use_treepm ? static_cast<float>(r_split) : 0.0f;
+        next::cuda::compute_gravity_cuda(root, ps, 1.0f, 0.05f, 0.5f, cached_ax, cached_ay, cached_az, r_cut_cuda);
+
+        if (use_treepm) {
+            std::vector<real> ax_pm, ay_pm, az_pm;
+            pm_solver.compute_long_range_forces(ps, ax_pm, ay_pm, az_pm);
+            for (int i = 0; i < N; ++i) {
+                cached_ax[i] += static_cast<float>(ax_pm[i]);
+                cached_ay[i] += static_cast<float>(ay_pm[i]);
+                cached_az[i] += static_cast<float>(az_pm[i]);
+            }
+        }
         has_cached_accel = true;
     }
 
@@ -82,10 +105,21 @@ inline void Step(ParticleSystem& ps, real dt) {
         ps.z[i] += ps.vz[i] * dt;
     }
 
-    // 2. Build Tree ONCE for new particle positions & Compute New Acceleration on GPU
+    // 2. Build Tree ONCE for new particle positions & Compute New Acceleration
     {
         auto root = buildTreeGPU();
-        next::cuda::compute_gravity_cuda(root, ps, 1.0f, 0.05f, 0.5f, cached_ax, cached_ay, cached_az);
+        float r_cut_cuda = use_treepm ? static_cast<float>(r_split) : 0.0f;
+        next::cuda::compute_gravity_cuda(root, ps, 1.0f, 0.05f, 0.5f, cached_ax, cached_ay, cached_az, r_cut_cuda);
+
+        if (use_treepm) {
+            std::vector<real> ax_pm, ay_pm, az_pm;
+            pm_solver.compute_long_range_forces(ps, ax_pm, ay_pm, az_pm);
+            for (int i = 0; i < N; ++i) {
+                cached_ax[i] += static_cast<float>(ax_pm[i]);
+                cached_ay[i] += static_cast<float>(ay_pm[i]);
+                cached_az[i] += static_cast<float>(az_pm[i]);
+            }
+        }
     }
 
     // 3. Final Kick (half step using new acceleration)
@@ -192,14 +226,37 @@ inline void Step(ParticleSystem& ps, real dt) {
         return root;
     };
 
+    static next::gravity::PMSolver pm_solver_cpu;
+    static bool pm_inited_cpu = false;
+
+    real box_size = size * real(2.5);
+    real r_split = (r_split_param > real(0.0)) ? r_split_param : (box_size / pm_grid * real(1.25));
+
+    if (use_treepm && (!pm_inited_cpu || pm_solver_cpu.get_grid_dim() != pm_grid)) {
+        pm_solver_cpu.init(pm_grid, box_size, r_split);
+        pm_inited_cpu = true;
+    }
+
+    std::vector<real> ax_pm, ay_pm, az_pm;
+    if (use_treepm) {
+        pm_solver_cpu.compute_long_range_forces(ps, ax_pm, ay_pm, az_pm);
+    }
+
     // FIRST KICK
     {
         auto root = buildTree();
+        real r_cut_cpu = use_treepm ? r_split : real(0.0);
 
 #pragma omp parallel for schedule(dynamic, 64)
         for (int i = start; i < end; ++i) {
             real ax = real(0), ay = real(0), az = real(0);
-            bhAccel(root, i, ps, theta, ax, ay, az);
+            bhAccel(root, i, ps, theta, ax, ay, az, r_cut_cpu);
+
+            if (use_treepm) {
+                ax += ax_pm[i];
+                ay += ay_pm[i];
+                az += az_pm[i];
+            }
 
             ps.vx[i] += ax * half;
             ps.vy[i] += ay * half;
@@ -239,12 +296,23 @@ inline void Step(ParticleSystem& ps, real dt) {
 
     // SECOND KICK
     {
+        if (use_treepm) {
+            pm_solver_cpu.compute_long_range_forces(ps, ax_pm, ay_pm, az_pm);
+        }
+
         auto root = buildTree();
+        real r_cut_cpu = use_treepm ? r_split : real(0.0);
 
 #pragma omp parallel for schedule(dynamic, 64)
         for (int i = start; i < end; ++i) {
             real ax = real(0), ay = real(0), az = real(0);
-            bhAccel(root, i, ps, theta, ax, ay, az);
+            bhAccel(root, i, ps, theta, ax, ay, az, r_cut_cpu);
+
+            if (use_treepm) {
+                ax += ax_pm[i];
+                ay += ay_pm[i];
+                az += az_pm[i];
+            }
 
             ps.vx[i] += ax * half;
             ps.vy[i] += ay * half;

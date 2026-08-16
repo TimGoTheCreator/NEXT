@@ -19,6 +19,10 @@
 #include "floatdef.h"
 #include "struct/particle.h"
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 /**
  * @brief Octree node structure redesigned for Structure of Arrays (SoA).
  * Instead of storing Particle pointers, it stores indices into the ParticleSystem.
@@ -171,7 +175,7 @@ inline void Octree::insert(int idx, const ParticleSystem& ps, OctreePool& pool, 
  * @brief Barnes-Hut acceleration calculation for a target particle at index 'i'.
  */
 inline void bhAccel(Octree* node, int i, const ParticleSystem& ps, real theta, real& ax, real& ay,
-                    real& az) {
+                    real& az, real r_split = real(0.0)) {
     if (!node || node->m == 0) return;
     if (node->leaf && node->bodyIdx == i) return;
 
@@ -181,6 +185,12 @@ inline void bhAccel(Octree* node, int i, const ParticleSystem& ps, real theta, r
     real dz = node->cz - ps.z[i];
     real r2 = dx * dx + dy * dy + dz * dz;
 
+    // In TreePM mode, short-range force cleanly truncates at 4.5 * r_split
+    if (r_split > real(0.0)) {
+        real r_cut = real(4.5) * r_split;
+        if (r2 > r_cut * r_cut) return;
+    }
+
     real dx_box = std::abs(ps.x[i] - node->x);
     real dy_box = std::abs(ps.y[i] - node->y);
     real dz_box = std::abs(ps.z[i] - node->z);
@@ -189,17 +199,27 @@ inline void bhAccel(Octree* node, int i, const ParticleSystem& ps, real theta, r
     const real open_r2 = (node->size / theta) * (node->size / theta);
     if (!node->leaf && (contains_particle || r2 < open_r2)) {
         for (auto* c : node->child) {
-            if (c) bhAccel(c, i, ps, theta, ax, ay, az);
+            if (c) bhAccel(c, i, ps, theta, ax, ay, az, r_split);
         }
         return;
     }
 
     constexpr real eps = real(0.05);
     real r2_soft = r2 + eps * eps;
-    real dist_inv = real(1.0) / std::sqrt(r2_soft);
+    real r_soft = std::sqrt(r2_soft);
+    real dist_inv = real(1.0) / r_soft;
 
     real inv3 = dist_inv * dist_inv * dist_inv;
     real fac = G * node->m * inv3;
+
+    // TreePM short-range complementary error function scaling
+    if (r_split > real(0.0)) {
+        real u = r_soft / (real(2.0) * r_split);
+        real erfc_val = std::erfc(u);
+        real exp_val = std::exp(-u * u);
+        real corr = erfc_val + (real(2.0) / std::sqrt(real(M_PI))) * u * exp_val;
+        fac *= corr;
+    }
 
     ax += dx * fac;
     ay += dy * fac;

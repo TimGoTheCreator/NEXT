@@ -39,7 +39,8 @@ void compute_gravity_cuda(const struct ::Octree* root,
                            float theta,
                            std::vector<float>& ax,
                            std::vector<float>& ay,
-                           std::vector<float>& az);
+                           std::vector<float>& az,
+                           float r_split = 0.0f);
 
 } // namespace cuda
 } // namespace next

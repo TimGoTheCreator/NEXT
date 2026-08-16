@@ -93,7 +93,8 @@ extern "C" __global__ void kernel_octree_gravity(
     int N,
     float G,
     float eps2,
-    float inv_theta2) 
+    float inv_theta2,
+    float r_split) 
 {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= N) return;
@@ -105,6 +106,9 @@ extern "C" __global__ void kernel_octree_gravity(
     float acc_x = 0.0f;
     float acc_y = 0.0f;
     float acc_z = 0.0f;
+
+    float r_cut2 = (r_split > 0.0f) ? (4.5f * r_split) * (4.5f * r_split) : 1e30f;
+    float inv_2rs = (r_split > 0.0f) ? 1.0f / (2.0f * r_split) : 0.0f;
 
     // Private stack in GPU registers/local memory (depth 256 handles arbitrary tree depth)
     int stack[256];
@@ -122,6 +126,9 @@ extern "C" __global__ void kernel_octree_gravity(
         float dz = node.cz - my_z;
         float r2 = dx * dx + dy * dy + dz * dz;
 
+        // TreePM short-range truncation
+        if (r2 > r_cut2) continue;
+
         float dx_box = fabsf(my_x - node.cx);
         float dy_box = fabsf(my_y - node.cy);
         float dz_box = fabsf(my_z - node.cz);
@@ -134,11 +141,22 @@ extern "C" __global__ void kernel_octree_gravity(
             if (!(node.is_leaf && node.body_idx == idx) && node.mass > 0.0f) {
                 float r2_soft = r2 + eps2;
                 float inv_r = rsqrtf(r2_soft);
+                float r_soft = r2_soft * inv_r;
                 float inv_r2 = inv_r * inv_r;
                 float inv_r3 = inv_r * inv_r2;
 
                 // Monopole Force
                 float fac = G * node.mass * inv_r3;
+
+                // TreePM short-range complementary error function scaling
+                if (r_split > 0.0f) {
+                    float u = r_soft * inv_2rs;
+                    float erfc_val = erfcf(u);
+                    float exp_val = expf(-u * u);
+                    float corr = erfc_val + 1.128379167f * u * exp_val;
+                    fac *= corr;
+                }
+
                 acc_x += dx * fac;
                 acc_y += dy * fac;
                 acc_z += dz * fac;
@@ -324,7 +342,8 @@ void compute_gravity_cuda(const ::Octree* cpu_root,
                            float theta,
                            std::vector<float>& ax,
                            std::vector<float>& ay,
-                           std::vector<float>& az)
+                           std::vector<float>& az,
+                           float r_split)
 {
     if (!init_jit_cuda()) return;
 
@@ -393,7 +412,7 @@ void compute_gravity_cuda(const ::Octree* cpu_root,
     float eps2 = eps * eps;
     float inv_theta2 = 1.0f / (theta * theta);
 
-    void* args[] = { &g_d_x, &g_d_y, &g_d_z, &g_d_nodes, &g_d_ax, &g_d_ay, &g_d_az, (void*)&N, (void*)&G, (void*)&eps2, (void*)&inv_theta2 };
+    void* args[] = { &g_d_x, &g_d_y, &g_d_z, &g_d_nodes, &g_d_ax, &g_d_ay, &g_d_az, (void*)&N, (void*)&G, (void*)&eps2, (void*)&inv_theta2, (void*)&r_split };
 
     cuLaunchKernel(g_tree_kernel, blocks, 1, 1, threads_per_block, 1, 1, 0, NULL, args, NULL);
 

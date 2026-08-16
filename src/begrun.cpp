@@ -85,6 +85,11 @@ int main(int argc, char** argv) {
 #elif defined(NEXT_FP32)
         std::cout << " Precision: FP32" << std::endl;
 #endif
+        if (args.treepm) {
+            std::cout << " Solver:    TreePM Hybrid (PM Mesh: " << args.pm_grid << "^3)" << std::endl;
+        } else {
+            std::cout << " Solver:    Barnes-Hut Octree" << std::endl;
+        }
         if (args.restart) {
             std::cout << " Mode:      Restart / Continue" << std::endl;
         }
@@ -123,7 +128,7 @@ int main(int argc, char** argv) {
         }
 
         real dtAdaptive = computeAdaptiveDt(particles, args.dt);
-        Step(particles, dtAdaptive);
+        Step(particles, dtAdaptive, args.treepm, args.pm_grid, static_cast<real>(args.r_split));
         simTime += dtAdaptive;
         force_step++;
 

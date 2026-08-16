@@ -24,6 +24,9 @@ Arguments parse_arguments(int argc, char** argv, int rank) {
     std::vector<std::string> pos_args;
     bool restart_flag = false;
     bool cuda_flag = false;
+    bool treepm_flag = false;
+    int pm_grid_val = 128;
+    double r_split_val = 0.0;
     std::string custom_output = "";
 
     for (int i = 1; i < argc; i++) {
@@ -32,6 +35,12 @@ Arguments parse_arguments(int argc, char** argv, int rank) {
             restart_flag = true;
         } else if (arg == "--cuda" || arg == "-g" || arg == "--gpu") {
             cuda_flag = true;
+        } else if (arg == "--treepm" || arg == "-tpm" || arg == "--pm") {
+            treepm_flag = true;
+        } else if (arg == "--pm-grid" || arg == "--grid") {
+            if (i + 1 < argc) pm_grid_val = std::stoi(argv[++i]);
+        } else if (arg == "--r-split" || arg == "--rsplit") {
+            if (i + 1 < argc) r_split_val = std::stod(argv[++i]);
         } else if (arg == "--output" || arg == "-o" || arg == "--out") {
             if (i + 1 < argc) {
                 custom_output = argv[++i];
@@ -42,10 +51,13 @@ Arguments parse_arguments(int argc, char** argv, int rank) {
             custom_output = arg.substr(3);
         } else if (arg == "--help" || arg == "-h") {
             if (rank == 0) {
-                std::cout << "Usage: next <input_file> <threads> <dt> <dump_interval> <format> [max_steps] [output_name] [--restart] [--cuda] [--output <name>]\n"
+                std::cout << "Usage: next <input_file> <threads> <dt> <dump_interval> <format> [max_steps] [output_name] [--restart] [--cuda] [--treepm] [--pm-grid <N>] [--output <name>]\n"
                           << "Formats: vtk, vtu, hdf5, hdf5-single\n"
                           << "Options:\n"
                           << "  --cuda, -g, --gpu           Enable NVIDIA CUDA GPU Acceleration\n"
+                          << "  --treepm, -tpm, --pm        Enable Hybrid TreePM (Tree-Particle-Mesh) Poisson Solver\n"
+                          << "  --pm-grid <N>               Set Particle-Mesh 3D Grid Dimension (default: 128)\n"
+                          << "  --r-split <R>               Set TreePM potential splitting radius r_s\n"
                           << "  --restart, -r, --continue   Resume simulation from checkpoint/snapshot\n"
                           << "  --output, -o <name>         Custom output file name (e.g. whirlpool.h5, galaxy.h5)\n";
             }
@@ -74,6 +86,9 @@ Arguments parse_arguments(int argc, char** argv, int rank) {
     Arguments args;
     args.restart = restart_flag;
     args.cuda = cuda_flag;
+    args.treepm = treepm_flag;
+    args.pm_grid = pm_grid_val;
+    args.r_split = r_split_val;
     args.output_name = custom_output;
 
     args.input_file = pos_args[0];

@@ -15,6 +15,9 @@ struct Arguments {
     bool restart = false;
     std::string output_name = "";
     bool cuda = false;
+    bool treepm = false;
+    int pm_grid = 128;
+    double r_split = 0.0;
 };
 
 Arguments parse_arguments(int argc, char** argv, int rank);
