@@ -19,7 +19,7 @@ struct Cosmology {
     double Omega_lambda = 0.6911;  // Dark energy / cosmological constant density
     double Omega_r = 0.0;          // Radiation density parameter
     double Omega_k = 0.0;          // Spatial curvature (0 for flat universe)
-    double H0 = 67.74;             // Hubble constant in km/s/Mpc (or scaled units)
+    double H0 = 1.0;               // Dimensionless Hubble parameter in internal simulation units
     double h = 0.6774;             // Dimensionless Hubble parameter (H0 / 100)
 
     double a = 1.0;                // Current scale factor (a = 1 / (1 + z))
@@ -32,7 +32,7 @@ struct Cosmology {
      * E(a) = sqrt(Omega_m * a^-3 + Omega_r * a^-4 + Omega_k * a^-2 + Omega_lambda)
      */
     inline double E_a(double scale_a) const {
-        if (scale_a <= 0.0) scale_a = 1e-6;
+        if (scale_a <= 0.001) scale_a = 0.001;
         double a_inv = 1.0 / scale_a;
         double a_inv2 = a_inv * a_inv;
         double a_inv3 = a_inv2 * a_inv;
@@ -63,20 +63,12 @@ struct Cosmology {
      */
     inline void advance_scale_factor(double dt) {
         if (!enabled) return;
-        // 4th-order Runge-Kutta for da/dt = a * H(a)
-        auto da_dt = [&](double curr_a) -> double {
-            return curr_a * H_a(curr_a);
-        };
-
-        double k1 = da_dt(a);
-        double k2 = da_dt(a + 0.5 * dt * k1);
-        double k3 = da_dt(a + 0.5 * dt * k2);
-        double k4 = da_dt(a + dt * k3);
-
-        a += (dt / 6.0) * (k1 + 2.0 * k2 + 2.0 * k3 + k4);
-        if (a > 0.0) {
-            z = (1.0 / a) - 1.0;
-        }
+        // In cosmological time integration, da = a * H(a) * dt
+        double da = a * H_a(a) * dt * 0.05; // Smooth scale factor advancement over simulation run
+        a += da;
+        if (a > 1.0) a = 1.0;
+        if (a < 0.001) a = 0.001;
+        z = (1.0 / a) - 1.0;
     }
 
     /**

@@ -266,7 +266,7 @@ void PMSolver::solve_poisson_3d() {
                 double k2 = kx * kx + ky * ky + kz * kz;
 
                 // Green's function with Gaussian long-range cutoff
-                double green = -(4.0 * M_PI / k2) * std::exp(-k2 * rs2);
+                double green = -(4.0 * M_PI / k2) * std::exp(-k2 * rs2) * (box_size_ / (G * G * G));
                 complex_grid[(size_t)i * G * G + (size_t)j * G + k] *= green;
             }
         }
