@@ -85,6 +85,10 @@ int main(int argc, char** argv) {
 #elif defined(NEXT_FP32)
         std::cout << " Precision: FP32" << std::endl;
 #endif
+        if (args.cosmology) {
+            std::cout << " Cosmology: Lambda-CDM (Omega_m=" << args.omega_m << ", Omega_L=" << args.omega_l << ", H0=" << args.hubble_h0 << ")" << std::endl;
+            std::cout << " Redshift:  z = " << args.z_start << " (Scale Factor a = " << (1.0 / (1.0 + args.z_start)) << ")" << std::endl;
+        }
         if (args.treepm) {
             std::cout << " Solver:    TreePM Hybrid (PM Mesh: " << args.pm_grid << "^3)" << std::endl;
         } else {
@@ -96,6 +100,15 @@ int main(int argc, char** argv) {
         if (args.max_steps > 0) {
             std::cout << " Max Steps: " << args.max_steps << std::endl;
         }
+    }
+
+    next::cosmology::Cosmology cosmo;
+    if (args.cosmology) {
+        cosmo.enabled = true;
+        cosmo.Omega_m = args.omega_m;
+        cosmo.Omega_lambda = args.omega_l;
+        cosmo.H0 = args.hubble_h0;
+        cosmo.set_redshift(args.z_start);
     }
 
     double restored_time = 0.0;
@@ -128,7 +141,10 @@ int main(int argc, char** argv) {
         }
 
         real dtAdaptive = computeAdaptiveDt(particles, args.dt);
-        Step(particles, dtAdaptive, args.treepm, args.pm_grid, static_cast<real>(args.r_split));
+        Step(particles, dtAdaptive, args.treepm, args.pm_grid, static_cast<real>(args.r_split), &cosmo);
+        if (args.cosmology) {
+            cosmo.advance_scale_factor(dtAdaptive);
+        }
         simTime += dtAdaptive;
         force_step++;
 

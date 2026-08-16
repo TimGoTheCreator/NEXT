@@ -27,6 +27,11 @@ Arguments parse_arguments(int argc, char** argv, int rank) {
     bool treepm_flag = false;
     int pm_grid_val = 128;
     double r_split_val = 0.0;
+    bool cosmology_flag = false;
+    double omega_m_val = 0.3089;
+    double omega_l_val = 0.6911;
+    double hubble_h0_val = 67.74;
+    double z_start_val = 50.0;
     std::string custom_output = "";
 
     for (int i = 1; i < argc; i++) {
@@ -41,6 +46,17 @@ Arguments parse_arguments(int argc, char** argv, int rank) {
             if (i + 1 < argc) pm_grid_val = std::stoi(argv[++i]);
         } else if (arg == "--r-split" || arg == "--rsplit") {
             if (i + 1 < argc) r_split_val = std::stod(argv[++i]);
+        } else if (arg == "--cosmology" || arg == "--hubble" || arg == "-cosmo") {
+            cosmology_flag = true;
+            treepm_flag = true; // Cosmology natively uses TreePM periodic mesh
+        } else if (arg == "--omega-m" || arg == "--omegam") {
+            if (i + 1 < argc) omega_m_val = std::stod(argv[++i]);
+        } else if (arg == "--omega-l" || arg == "--omegal") {
+            if (i + 1 < argc) omega_l_val = std::stod(argv[++i]);
+        } else if (arg == "--hubble-h0" || arg == "--h0") {
+            if (i + 1 < argc) hubble_h0_val = std::stod(argv[++i]);
+        } else if (arg == "--z-start" || arg == "--zstart" || arg == "-z") {
+            if (i + 1 < argc) z_start_val = std::stod(argv[++i]);
         } else if (arg == "--output" || arg == "-o" || arg == "--out") {
             if (i + 1 < argc) {
                 custom_output = argv[++i];
@@ -51,15 +67,20 @@ Arguments parse_arguments(int argc, char** argv, int rank) {
             custom_output = arg.substr(3);
         } else if (arg == "--help" || arg == "-h") {
             if (rank == 0) {
-                std::cout << "Usage: next <input_file> <threads> <dt> <dump_interval> <format> [max_steps] [output_name] [--restart] [--cuda] [--treepm] [--pm-grid <N>] [--output <name>]\n"
+                std::cout << "Usage: next <input_file> <threads> <dt> <dump_interval> <format> [max_steps] [output_name] [options]\n"
                           << "Formats: vtk, vtu, hdf5, hdf5-single\n"
                           << "Options:\n"
                           << "  --cuda, -g, --gpu           Enable NVIDIA CUDA GPU Acceleration\n"
                           << "  --treepm, -tpm, --pm        Enable Hybrid TreePM (Tree-Particle-Mesh) Poisson Solver\n"
                           << "  --pm-grid <N>               Set Particle-Mesh 3D Grid Dimension (default: 128)\n"
                           << "  --r-split <R>               Set TreePM potential splitting radius r_s\n"
+                          << "  --cosmology, --hubble       Enable FLRW Comoving Cosmological Expansion (Big Bang / Cosmic Web)\n"
+                          << "  --z-start <z>               Initial cosmological redshift (default: 50.0)\n"
+                          << "  --omega-m <val>             Total matter density Omega_m (default: 0.3089)\n"
+                          << "  --omega-l <val>             Dark energy density Omega_Lambda (default: 0.6911)\n"
+                          << "  --h0 <val>                  Hubble constant H0 (default: 67.74 km/s/Mpc)\n"
                           << "  --restart, -r, --continue   Resume simulation from checkpoint/snapshot\n"
-                          << "  --output, -o <name>         Custom output file name (e.g. whirlpool.h5, galaxy.h5)\n";
+                          << "  --output, -o <name>         Custom output file name (e.g. cosmos.h5, galaxy.h5)\n";
             }
 #ifdef NEXT_MPI
             MPI_Finalize();
@@ -89,6 +110,11 @@ Arguments parse_arguments(int argc, char** argv, int rank) {
     args.treepm = treepm_flag;
     args.pm_grid = pm_grid_val;
     args.r_split = r_split_val;
+    args.cosmology = cosmology_flag;
+    args.omega_m = omega_m_val;
+    args.omega_l = omega_l_val;
+    args.hubble_h0 = hubble_h0_val;
+    args.z_start = z_start_val;
     args.output_name = custom_output;
 
     args.input_file = pos_args[0];

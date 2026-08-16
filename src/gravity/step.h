@@ -28,10 +28,16 @@
 #include <chrono>
 #include <fstream>
 
+#include "cosmology.h"
 #include "pm_solver.h"
 
-inline void Step(ParticleSystem& ps, real dt, bool use_treepm = false, int pm_grid = 128, real r_split_param = real(0.0)) {
+inline void Step(ParticleSystem& ps, real dt, bool use_treepm = false, int pm_grid = 128, real r_split_param = real(0.0), next::cosmology::Cosmology* cosmo = nullptr) {
     if (ps.size() == 0) return;
+
+    // Cosmological scale factors (a = 1.0 for non-cosmological runs)
+    real a_scale = (cosmo && cosmo->enabled) ? static_cast<real>(cosmo->a) : real(1.0);
+    real drift_factor = (cosmo && cosmo->enabled) ? (dt / (a_scale * a_scale)) : dt;
+    real kick_factor = (cosmo && cosmo->enabled) ? ((dt * real(0.5)) / a_scale) : (dt * real(0.5));
 
 #ifdef NEXT_ENABLE_CUDA
 #ifdef NEXT_BENCHMARK
@@ -39,7 +45,7 @@ inline void Step(ParticleSystem& ps, real dt, bool use_treepm = false, int pm_gr
 #endif
 
     const int N = static_cast<int>(ps.size());
-    const real half = dt * real(0.5);
+    const real half = kick_factor;
     std::vector<float> ax, ay, az;
     static thread_local OctreePool cuda_pool;
     static next::gravity::PMSolver pm_solver;
@@ -100,9 +106,9 @@ inline void Step(ParticleSystem& ps, real dt, bool use_treepm = false, int pm_gr
         ps.vx[i] += cached_ax[i] * half;
         ps.vy[i] += cached_ay[i] * half;
         ps.vz[i] += cached_az[i] * half;
-        ps.x[i] += ps.vx[i] * dt;
-        ps.y[i] += ps.vy[i] * dt;
-        ps.z[i] += ps.vz[i] * dt;
+        ps.x[i] += ps.vx[i] * drift_factor;
+        ps.y[i] += ps.vy[i] * drift_factor;
+        ps.z[i] += ps.vz[i] * drift_factor;
     }
 
     // 2. Build Tree ONCE for new particle positions & Compute New Acceleration
@@ -278,9 +284,9 @@ inline void Step(ParticleSystem& ps, real dt, bool use_treepm = false, int pm_gr
 // DRIFT
 #pragma omp parallel for schedule(static)
     for (int i = start; i < end; ++i) {
-        ps.x[i] += ps.vx[i] * dt;
-        ps.y[i] += ps.vy[i] * dt;
-        ps.z[i] += ps.vz[i] * dt;
+        ps.x[i] += ps.vx[i] * drift_factor;
+        ps.y[i] += ps.vy[i] * drift_factor;
+        ps.z[i] += ps.vz[i] * drift_factor;
     }
 
 #ifdef NEXT_MPI
