@@ -134,6 +134,9 @@ inline void Step(ParticleSystem& ps, real dt, bool use_treepm = false, int pm_gr
         ps.vx[i] += cached_ax[i] * half;
         ps.vy[i] += cached_ay[i] * half;
         ps.vz[i] += cached_az[i] * half;
+        ps.ax[i] = static_cast<real>(cached_ax[i]);
+        ps.ay[i] = static_cast<real>(cached_ay[i]);
+        ps.az[i] = static_cast<real>(cached_az[i]);
     }
 
 #ifdef NEXT_BENCHMARK

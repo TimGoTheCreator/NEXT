@@ -29,6 +29,7 @@ static void WritePartTypeGroup(hid_t file, const std::string& group_name, const 
 
     std::vector<float> coords(N * 3);
     std::vector<float> vels(N * 3);
+    std::vector<float> accs(N * 3);
     std::vector<real> masses(N);
     std::vector<int> ids(N);
 
@@ -41,6 +42,10 @@ static void WritePartTypeGroup(hid_t file, const std::string& group_name, const 
         vels[3 * i + 0] = static_cast<float>(ps.vx[idx]);
         vels[3 * i + 1] = static_cast<float>(ps.vy[idx]);
         vels[3 * i + 2] = static_cast<float>(ps.vz[idx]);
+
+        accs[3 * i + 0] = static_cast<float>(ps.ax[idx]);
+        accs[3 * i + 1] = static_cast<float>(ps.ay[idx]);
+        accs[3 * i + 2] = static_cast<float>(ps.az[idx]);
 
         masses[i] = ps.m[idx];
         ids[i] = static_cast<int>(idx + 1);
@@ -65,6 +70,12 @@ static void WritePartTypeGroup(hid_t file, const std::string& group_name, const 
         H5Dcreate(group, "Velocities", H5T_NATIVE_FLOAT, space3, H5P_DEFAULT, dcpl, H5P_DEFAULT);
     H5Dwrite(dset_vels, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, vels.data());
     H5Dclose(dset_vels);
+
+    // Accelerations (Gravitational forces)
+    hid_t dset_accs =
+        H5Dcreate(group, "Acceleration", H5T_NATIVE_FLOAT, space3, H5P_DEFAULT, dcpl, H5P_DEFAULT);
+    H5Dwrite(dset_accs, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, accs.data());
+    H5Dclose(dset_accs);
 
     // Masses
     hid_t dset_masses =
@@ -335,11 +346,15 @@ void SaveHDF5SingleStep(const ParticleSystem& ps, const std::string& filename, i
                 << "\" Format=\"HDF\">\n";
             xmf << "              " << filename << ":/" << snap << "/" << group << "/Masses\n";
             xmf << "            </DataItem>\n          </Attribute>\n";
-            xmf << "          <Attribute Name=\"Velocity\" AttributeType=\"Vector\" "
-                   "Center=\"Node\">\n";
+            xmf << "          <Attribute Name=\"Velocity\" AttributeType=\"Vector\" Center=\"Node\">\n";
             xmf << "            <DataItem Dimensions=\"" << count
                 << " 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
             xmf << "              " << filename << ":/" << snap << "/" << group << "/Velocities\n";
+            xmf << "            </DataItem>\n          </Attribute>\n";
+            xmf << "          <Attribute Name=\"Acceleration\" AttributeType=\"Vector\" Center=\"Node\">\n";
+            xmf << "            <DataItem Dimensions=\"" << count
+                << " 3\" NumberType=\"Float\" Precision=\"4\" Format=\"HDF\">\n";
+            xmf << "              " << filename << ":/" << snap << "/" << group << "/Acceleration\n";
             xmf << "            </DataItem>\n          </Attribute>\n";
             xmf << "          <Attribute Name=\"ParticleID\" AttributeType=\"Scalar\" "
                    "Center=\"Node\">\n";

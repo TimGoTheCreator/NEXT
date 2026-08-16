@@ -79,10 +79,10 @@ struct alignas(16) GPUNode {
     int child[8];
     float qxx, qxy, qxz;
     float qyy, qyz, qzz;
-    float pad[3]; // Explicit padding to guaranteed 96-byte stride
+    float pad[3]; // 96-byte aligned stride
 };
 
-extern "C" __global__ void kernel_octree_gravity(
+extern "C" __global__ void __launch_bounds__(128, 8) kernel_octree_gravity(
     const float* __restrict__ px,
     const float* __restrict__ py,
     const float* __restrict__ pz,
@@ -97,15 +97,6 @@ extern "C" __global__ void kernel_octree_gravity(
     float r_split) 
 {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
-
-    // Cache top 64 root and first-level nodes into blazing-fast L1 GPU Shared Memory
-    __shared__ GPUNode s_top_nodes[64];
-    int tid = threadIdx.x;
-    if (tid < 64) {
-        s_top_nodes[tid] = nodes[tid];
-    }
-    __syncthreads();
-
     if (idx >= N) return;
 
     float my_x = px[idx];
@@ -119,14 +110,14 @@ extern "C" __global__ void kernel_octree_gravity(
     float r_cut2 = (r_split > 0.0f) ? (4.5f * r_split) * (4.5f * r_split) : 1e30f;
     float inv_2rs = (r_split > 0.0f) ? 1.0f / (2.0f * r_split) : 0.0f;
 
-    // Fast register-backed stack (depth 128 is mathematically sufficient for N > 10M particles)
-    int stack[128];
+    // Compact 64-depth register stack (eliminates register spilling on Ada Lovelace / RTX)
+    int stack[64];
     int stack_top = 0;
     stack[0] = 0; // Root node index
 
     while (stack_top >= 0) {
         int curr = stack[stack_top--];
-        const GPUNode node = (curr < 64) ? s_top_nodes[curr] : nodes[curr];
+        const GPUNode& node = nodes[curr];
 
         if (node.mass <= 0.0f) continue;
 
@@ -135,18 +126,13 @@ extern "C" __global__ void kernel_octree_gravity(
         float dz = node.cz - my_z;
         float r2 = dx * dx + dy * dy + dz * dz;
 
-        // TreePM short-range truncation
+        // TreePM short-range cutoff
         if (r2 > r_cut2) continue;
-
-        float dx_box = fabsf(my_x - node.cx);
-        float dy_box = fabsf(my_y - node.cy);
-        float dz_box = fabsf(my_z - node.cz);
-        bool contains_target = (dx_box <= node.size && dy_box <= node.size && dz_box <= node.size);
 
         float open_r2 = node.size * node.size * inv_theta2;
 
-        if (node.is_leaf || (!contains_target && r2 >= open_r2)) {
-            // Evaluate Node Gravity
+        if (node.is_leaf || (r2 >= open_r2)) {
+            // Evaluate Direct or Monopole/Quadrupole Gravity
             if (!(node.is_leaf && node.body_idx == idx) && node.mass > 0.0f) {
                 float r2_soft = r2 + eps2;
                 float inv_r = rsqrtf(r2_soft);
@@ -156,7 +142,7 @@ extern "C" __global__ void kernel_octree_gravity(
                 // Monopole Force
                 float fac = G * node.mass * inv_r3;
 
-                // TreePM short-range complementary error function scaling
+                // TreePM complementary error function
                 if (r_split > 0.0f) {
                     float u = (r2_soft * inv_r) * inv_2rs;
                     float erfc_val = erfcf(u);
@@ -168,29 +154,31 @@ extern "C" __global__ void kernel_octree_gravity(
                 acc_y += dy * fac;
                 acc_z += dz * fac;
 
-                // Quadrupole Moments with vectorized FMA math
-                float inv_r5 = inv_r3 * inv_r2;
-                float inv_r7 = inv_r5 * inv_r2;
+                // Fast Quadrupole Expansion
+                if (!node.is_leaf) {
+                    float inv_r5 = inv_r3 * inv_r2;
+                    float inv_r7 = inv_r5 * inv_r2;
 
-                float q = node.qxx * dx * dx + node.qyy * dy * dy + node.qzz * dz * dz +
-                          2.0f * (node.qxy * dx * dy + node.qxz * dx * dz + node.qyz * dy * dz);
+                    float q = node.qxx * dx * dx + node.qyy * dy * dy + node.qzz * dz * dz +
+                              2.0f * (node.qxy * dx * dy + node.qxz * dx * dz + node.qyz * dy * dz);
 
-                float Qrx = 2.0f * (node.qxx * dx + node.qxy * dy + node.qxz * dz);
-                float Qry = 2.0f * (node.qxy * dx + node.qyy * dy + node.qyz * dz);
-                float Qrz = 2.0f * (node.qxz * dx + node.qyz * dy + node.qzz * dz);
+                    float Qrx = 2.0f * (node.qxx * dx + node.qxy * dy + node.qxz * dz);
+                    float Qry = 2.0f * (node.qxy * dx + node.qyy * dy + node.qyz * dz);
+                    float Qrz = 2.0f * (node.qxz * dx + node.qyz * dy + node.qzz * dz);
 
-                float Ghalf = G * 0.5f;
-                float five_q = 5.0f * q * inv_r7;
-                acc_x += Ghalf * (Qrx * inv_r5 - five_q * dx);
-                acc_y += Ghalf * (Qry * inv_r5 - five_q * dy);
-                acc_z += Ghalf * (Qrz * inv_r5 - five_q * dz);
+                    float Ghalf = G * 0.5f;
+                    float five_q = 5.0f * q * inv_r7;
+                    acc_x += Ghalf * (Qrx * inv_r5 - five_q * dx);
+                    acc_y += Ghalf * (Qry * inv_r5 - five_q * dy);
+                    acc_z += Ghalf * (Qrz * inv_r5 - five_q * dz);
+                }
             }
         } else {
-            // Open node -> push active children onto stack unrolled
+            // Push active children to stack
             #pragma unroll
             for (int i = 0; i < 8; ++i) {
                 int c = node.child[i];
-                if (c >= 0 && stack_top < 127) {
+                if (c >= 0 && stack_top < 63) {
                     stack[++stack_top] = c;
                 }
             }
@@ -423,7 +411,7 @@ void compute_gravity_cuda(const ::Octree* cpu_root,
     cuMemcpyHtoD(g_d_z, s_z.data(), part_bytes);
     cuMemcpyHtoD(g_d_nodes, s_flat_nodes.data(), node_bytes);
 
-    int threads_per_block = 256;
+    int threads_per_block = 128;
     int blocks = (N + threads_per_block - 1) / threads_per_block;
     float eps2 = eps * eps;
     float inv_theta2 = 1.0f / (theta * theta);

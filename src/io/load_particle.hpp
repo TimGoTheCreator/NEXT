@@ -214,6 +214,9 @@ inline Particle LoadParticlesFromFile(const std::string& filename, double* out_s
             p.vx.push_back(tvx);
             p.vy.push_back(tvy);
             p.vz.push_back(tvz);
+            p.ax.push_back(0);
+            p.ay.push_back(0);
+            p.az.push_back(0);
             p.m.push_back(tm);
             p.type.push_back(tt);
         }
