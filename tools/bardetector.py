@@ -5,11 +5,15 @@ Convenience launcher for NEXTInSim Bar Detector
 import os
 import sys
 
-ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-if ROOT_DIR not in sys.path:
-    sys.path.insert(0, ROOT_DIR)
+# Add nextsim to python path
+nextsim_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "nextsim"))
+if nextsim_dir not in sys.path:
+    sys.path.insert(0, nextsim_dir)
 
-from NEXTInSim.bardetector import main
+try:
+    from bardetector import main
+except ImportError:
+    from nextsim.bardetector import main
 
 if __name__ == "__main__":
     main()

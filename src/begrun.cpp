@@ -141,7 +141,8 @@ int main(int argc, char** argv) {
         }
 
         if (should_dump) {
-            std::string out = "dump_" + std::to_string(dump_count);
+            std::string base_name = args.output_name.empty() ? "dump" : args.output_name;
+            std::string out = base_name + "_" + std::to_string(dump_count);
 
             switch (args.format) {
                 case OutputFormat::VTK:
@@ -154,7 +155,14 @@ int main(int argc, char** argv) {
                     out += ".hdf5";
                     break;
                 case OutputFormat::HDF5_SINGLE:
-                    out = "simulation.h5";
+                    if (!args.output_name.empty()) {
+                        out = args.output_name;
+                        if (out.find(".h5") == std::string::npos && out.find(".hdf5") == std::string::npos) {
+                            out += ".h5";
+                        }
+                    } else {
+                        out = "simulation.h5";
+                    }
                     break;
             }
 

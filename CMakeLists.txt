@@ -22,7 +22,7 @@ option(NEXT_MPI "Enable MPI distributed memory parallelism" OFF)
 option(NEXT_NATIVE_ARCH "Enable architecture-native host CPU optimizations (-march=native)" OFF)
 option(NEXT_ENABLE_LTO "Enable Link-Time Optimization / Interprocedural Optimization" OFF)
 option(ENABLE_VEC_REPORT "Enable compiler vectorization reports" OFF)
-option(NEXT_COPY_TO_CMAKE_SOURCE_DIR "Copy final executable to CMake source directory" ON)
+option(NEXT_ENABLE_CUDA "Enable NVIDIA CUDA GPU Acceleration" OFF)
 option(NEXT_BENCHMARK "Enable step benchmark timing and logging to log.txt" OFF)
 
 # ==============================================================================
@@ -68,6 +68,11 @@ endif()
 if(NEXT_BENCHMARK)
     target_compile_definitions(next PRIVATE NEXT_BENCHMARK)
     message(STATUS "[NEXT HPC] Benchmark logging enabled (NEXT_BENCHMARK)")
+endif()
+
+if(NEXT_ENABLE_CUDA)
+    target_compile_definitions(next PRIVATE NEXT_ENABLE_CUDA)
+    message(STATUS "[NEXT HPC] NVIDIA CUDA GPU Acceleration enabled (NEXT_ENABLE_CUDA)")
 endif()
 
 # ==============================================================================

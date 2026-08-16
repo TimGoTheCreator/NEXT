@@ -13,6 +13,8 @@ struct Arguments {
     OutputFormat format;
     int max_steps = -1;
     bool restart = false;
+    std::string output_name = "";
+    bool cuda = false;
 };
 
 Arguments parse_arguments(int argc, char** argv, int rank);

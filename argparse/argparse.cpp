@@ -23,17 +23,31 @@ namespace next {
 Arguments parse_arguments(int argc, char** argv, int rank) {
     std::vector<std::string> pos_args;
     bool restart_flag = false;
+    bool cuda_flag = false;
+    std::string custom_output = "";
 
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
         if (arg == "--restart" || arg == "-r" || arg == "--continue" || arg == "-c") {
             restart_flag = true;
+        } else if (arg == "--cuda" || arg == "-g" || arg == "--gpu") {
+            cuda_flag = true;
+        } else if (arg == "--output" || arg == "-o" || arg == "--out") {
+            if (i + 1 < argc) {
+                custom_output = argv[++i];
+            }
+        } else if (arg.rfind("--output=", 0) == 0) {
+            custom_output = arg.substr(9);
+        } else if (arg.rfind("-o=", 0) == 0) {
+            custom_output = arg.substr(3);
         } else if (arg == "--help" || arg == "-h") {
             if (rank == 0) {
-                std::cout << "Usage: next <input_file> <threads> <dt> <dump_interval> <format> [max_steps] [--restart]\n"
+                std::cout << "Usage: next <input_file> <threads> <dt> <dump_interval> <format> [max_steps] [output_name] [--restart] [--cuda] [--output <name>]\n"
                           << "Formats: vtk, vtu, hdf5, hdf5-single\n"
                           << "Options:\n"
-                          << "  --restart, -r, --continue   Resume simulation from checkpoint/snapshot\n";
+                          << "  --cuda, -g, --gpu           Enable NVIDIA CUDA GPU Acceleration\n"
+                          << "  --restart, -r, --continue   Resume simulation from checkpoint/snapshot\n"
+                          << "  --output, -o <name>         Custom output file name (e.g. whirlpool.h5, galaxy.h5)\n";
             }
 #ifdef NEXT_MPI
             MPI_Finalize();
@@ -44,11 +58,11 @@ Arguments parse_arguments(int argc, char** argv, int rank) {
         }
     }
 
-    if (pos_args.size() < 5 || pos_args.size() > 6) {
+    if (pos_args.size() < 5 || pos_args.size() > 7) {
         // Only rank 0 prints usage
         if (rank == 0) {
             std::cerr << "Usage: next <input_file> <threads> <dt> <dump_interval> <vtk|vtu|hdf5|hdf5-single> "
-                         "[max_steps] [--restart]\n";
+                         "[max_steps] [output_name] [--restart] [--cuda] [--output <name>]\n";
         }
 
 #ifdef NEXT_MPI
@@ -59,6 +73,8 @@ Arguments parse_arguments(int argc, char** argv, int rank) {
 
     Arguments args;
     args.restart = restart_flag;
+    args.cuda = cuda_flag;
+    args.output_name = custom_output;
 
     args.input_file = pos_args[0];
     args.threads = std::stoi(pos_args[1]);
@@ -85,8 +101,21 @@ Arguments parse_arguments(int argc, char** argv, int rank) {
         std::exit(1);
     }
 
-    if (pos_args.size() == 6) {
-        args.max_steps = std::stoi(pos_args[5]);
+    if (pos_args.size() >= 6) {
+        // Check if 6th arg is a number (max_steps) or a string (output_name)
+        try {
+            args.max_steps = std::stoi(pos_args[5]);
+        } catch (const std::exception&) {
+            if (args.output_name.empty()) {
+                args.output_name = pos_args[5];
+            }
+        }
+    }
+
+    if (pos_args.size() == 7) {
+        if (args.output_name.empty()) {
+            args.output_name = pos_args[6];
+        }
     }
 
     return args;

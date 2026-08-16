@@ -19,6 +19,9 @@
 #include "nfw.h"
 #include "octree.h"
 #include "struct/particle.h"
+#ifdef NEXT_ENABLE_CUDA
+#include "cuda/cuda_gravity.h"
+#endif
 #ifdef NEXT_MPI
 #include <mpi.h>
 #endif
@@ -27,6 +30,80 @@
 
 inline void Step(ParticleSystem& ps, real dt) {
     if (ps.size() == 0) return;
+
+#ifdef NEXT_ENABLE_CUDA
+#ifdef NEXT_BENCHMARK
+    auto t_start = std::chrono::high_resolution_clock::now();
+#endif
+
+    const int N = static_cast<int>(ps.size());
+    const real half = dt * real(0.5);
+    std::vector<float> ax, ay, az;
+    static thread_local OctreePool cuda_pool;
+
+    auto buildTreeGPU = [&]() -> Octree* {
+        cuda_pool.reset();
+        real minx = 1e30, miny = 1e30, minz = 1e30;
+        real maxx = -1e30, maxy = -1e30, maxz = -1e30;
+        for (int i = 0; i < N; ++i) {
+            minx = std::min(minx, ps.x[i]); miny = std::min(miny, ps.y[i]); minz = std::min(minz, ps.z[i]);
+            maxx = std::max(maxx, ps.x[i]); maxy = std::max(maxy, ps.y[i]); maxz = std::max(maxz, ps.z[i]);
+        }
+        const real cx = (minx + maxx) * real(0.5);
+        const real cy = (miny + maxy) * real(0.5);
+        const real cz = (minz + maxz) * real(0.5);
+        real size = std::max({maxx - minx, maxy - miny, maxz - minz}) * real(0.5);
+        if (size <= real(0)) size = real(1.0);
+
+        Octree* root = cuda_pool.createNode(cx, cy, cz, size);
+        for (int i = 0; i < N; ++i) root->insert(i, ps, cuda_pool);
+        root->computeMass(ps);
+        return root;
+    };
+
+    static std::vector<float> cached_ax, cached_ay, cached_az;
+    static bool has_cached_accel = false;
+
+    // If first step, compute initial acceleration
+    if (!has_cached_accel || cached_ax.size() != static_cast<size_t>(N)) {
+        auto root = buildTreeGPU();
+        next::cuda::compute_gravity_cuda(root, ps, 1.0f, 0.05f, 0.5f, cached_ax, cached_ay, cached_az);
+        has_cached_accel = true;
+    }
+
+    // 1. Kick (half step using cached acceleration) + Drift (full step)
+    #pragma omp parallel for schedule(static)
+    for (int i = 0; i < N; ++i) {
+        ps.vx[i] += cached_ax[i] * half;
+        ps.vy[i] += cached_ay[i] * half;
+        ps.vz[i] += cached_az[i] * half;
+        ps.x[i] += ps.vx[i] * dt;
+        ps.y[i] += ps.vy[i] * dt;
+        ps.z[i] += ps.vz[i] * dt;
+    }
+
+    // 2. Build Tree ONCE for new particle positions & Compute New Acceleration on GPU
+    {
+        auto root = buildTreeGPU();
+        next::cuda::compute_gravity_cuda(root, ps, 1.0f, 0.05f, 0.5f, cached_ax, cached_ay, cached_az);
+    }
+
+    // 3. Final Kick (half step using new acceleration)
+    #pragma omp parallel for schedule(static)
+    for (int i = 0; i < N; ++i) {
+        ps.vx[i] += cached_ax[i] * half;
+        ps.vy[i] += cached_ay[i] * half;
+        ps.vz[i] += cached_az[i] * half;
+    }
+
+#ifdef NEXT_BENCHMARK
+    auto t_end = std::chrono::high_resolution_clock::now();
+    double elapsed_ms = std::chrono::duration<double, std::milli>(t_end - t_start).count();
+    std::ofstream log("log.txt", std::ios::app);
+    log << "[GPU Step Time] " << elapsed_ms << " ms" << std::endl;
+#endif
+    return;
+#else
 
 #ifdef NEXT_BENCHMARK
     auto t_start = std::chrono::high_resolution_clock::now();
@@ -194,5 +271,6 @@ inline void Step(ParticleSystem& ps, real dt) {
         std::ofstream log("log.txt", std::ios::app);
         log << "Step time: " << elapsed_ms << " ms" << std::endl;
     }
+#endif
 #endif
 }

@@ -58,6 +58,21 @@ simulation.h5
 simulation.xdmf
 log.txt
 *.log
+*.txt
+
+# Rendered Media & Large Animation Files
+*.gif
+*.mp4
+*.mkv
+*.avi
+*.mov
+*.webm
+*.png
+*.jpg
+*.jpeg
+*.tiff
+nasa_render_*.png
+galaxy_simulation.*
 
 # Generated analysis plots
 *.png

@@ -105,14 +105,14 @@ struct Octree {
             real rx = c->cx - cx;
             real ry = c->cy - cy;
             real rz = c->cz - cz;
-            real r2 = rx * rx + ry * ry + rz * rz + (size * size * real(0.01));
+            real r2 = rx * rx + ry * ry + rz * rz;
             real mc = c->m;
-            Qxx += mc * (3 * rx * rx - r2);
-            Qyy += mc * (3 * ry * ry - r2);
-            Qzz += mc * (3 * rz * rz - r2);
-            Qxy += mc * (3 * rx * ry);
-            Qxz += mc * (3 * rx * rz);
-            Qyz += mc * (3 * ry * rz);
+            Qxx += c->Qxx + mc * (3 * rx * rx - r2);
+            Qyy += c->Qyy + mc * (3 * ry * ry - r2);
+            Qzz += c->Qzz + mc * (3 * rz * rz - r2);
+            Qxy += c->Qxy + mc * (3 * rx * ry);
+            Qxz += c->Qxz + mc * (3 * rx * rz);
+            Qyz += c->Qyz + mc * (3 * ry * rz);
         }
     }
 };
@@ -181,8 +181,13 @@ inline void bhAccel(Octree* node, int i, const ParticleSystem& ps, real theta, r
     real dz = node->cz - ps.z[i];
     real r2 = dx * dx + dy * dy + dz * dz;
 
+    real dx_box = std::abs(ps.x[i] - node->x);
+    real dy_box = std::abs(ps.y[i] - node->y);
+    real dz_box = std::abs(ps.z[i] - node->z);
+    bool contains_particle = (dx_box <= node->size && dy_box <= node->size && dz_box <= node->size);
+
     const real open_r2 = (node->size / theta) * (node->size / theta);
-    if (!node->leaf && r2 < open_r2) {
+    if (!node->leaf && (contains_particle || r2 < open_r2)) {
         for (auto* c : node->child) {
             if (c) bhAccel(c, i, ps, theta, ax, ay, az);
         }
@@ -208,7 +213,7 @@ inline void bhAccel(Octree* node, int i, const ParticleSystem& ps, real theta, r
              2 * (node->Qxy * dx * dy + node->Qxz * dx * dz + node->Qyz * dy * dz);
 
     real Qrx = 2 * (node->Qxx * dx + node->Qxy * dy + node->Qxz * dz);
-    real Qry = 2 * (node->Qxy * dx + node->Qyy * dy + node->Qzz * dz);
+    real Qry = 2 * (node->Qxy * dx + node->Qyy * dy + node->Qyz * dz);
     real Qrz = 2 * (node->Qxz * dx + node->Qyz * dy + node->Qzz * dz);
 
     ax += (G * real(0.5)) * (Qrx * inv5 - 5 * q * inv7 * dx);
