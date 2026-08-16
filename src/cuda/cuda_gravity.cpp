@@ -150,7 +150,6 @@ extern "C" __global__ void kernel_octree_gravity(
             if (!(node.is_leaf && node.body_idx == idx) && node.mass > 0.0f) {
                 float r2_soft = r2 + eps2;
                 float inv_r = rsqrtf(r2_soft);
-                float r_soft = r2_soft * inv_r;
                 float inv_r2 = inv_r * inv_r;
                 float inv_r3 = inv_r * inv_r2;
 
@@ -159,18 +158,17 @@ extern "C" __global__ void kernel_octree_gravity(
 
                 // TreePM short-range complementary error function scaling
                 if (r_split > 0.0f) {
-                    float u = r_soft * inv_2rs;
+                    float u = (r2_soft * inv_r) * inv_2rs;
                     float erfc_val = erfcf(u);
-                    float exp_val = expf(-u * u);
-                    float corr = erfc_val + 1.128379167f * u * exp_val;
-                    fac *= corr;
+                    float exp_val = __expf(-u * u);
+                    fac *= (erfc_val + 1.128379167f * u * exp_val);
                 }
 
                 acc_x += dx * fac;
                 acc_y += dy * fac;
                 acc_z += dz * fac;
 
-                // Quadrupole Moments with correct Qry formula
+                // Quadrupole Moments with vectorized FMA math
                 float inv_r5 = inv_r3 * inv_r2;
                 float inv_r7 = inv_r5 * inv_r2;
 
@@ -182,15 +180,17 @@ extern "C" __global__ void kernel_octree_gravity(
                 float Qrz = 2.0f * (node.qxz * dx + node.qyz * dy + node.qzz * dz);
 
                 float Ghalf = G * 0.5f;
-                acc_x += Ghalf * (Qrx * inv_r5 - 5.0f * q * inv_r7 * dx);
-                acc_y += Ghalf * (Qry * inv_r5 - 5.0f * q * inv_r7 * dy);
-                acc_z += Ghalf * (Qrz * inv_r5 - 5.0f * q * inv_r7 * dz);
+                float five_q = 5.0f * q * inv_r7;
+                acc_x += Ghalf * (Qrx * inv_r5 - five_q * dx);
+                acc_y += Ghalf * (Qry * inv_r5 - five_q * dy);
+                acc_z += Ghalf * (Qrz * inv_r5 - five_q * dz);
             }
         } else {
-            // Open node -> push active children onto stack
+            // Open node -> push active children onto stack unrolled
+            #pragma unroll
             for (int i = 0; i < 8; ++i) {
                 int c = node.child[i];
-                if (c >= 0 && stack_top < 255) {
+                if (c >= 0 && stack_top < 127) {
                     stack[++stack_top] = c;
                 }
             }
