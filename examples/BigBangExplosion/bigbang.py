@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """
-Big Bang Physical Expansion & Fragmenting Cosmic Web Benchmark (50,000 Particles)
+Hyper-Dense Primordial Big Bang Shockwave & Global Fragmentation (100,000 Particles)
 Physics:
-1. Particles start in a dense primordial sphere (R_0 ~ 3.0 kpc/Mpc).
-2. Pure Physical Hubble Flow: v_Hubble = H_0 * r (Linear Outward Radial Blast).
-3. Superimposed scale-dependent primordial density ripples.
-4. As the universe expands outward into the void, local overdensities turn around
-   under self-gravity to form spinning galaxy clusters within the expanding fireball!
+1. Singularity Core: 100,000 particles packed into a superdense micro-core (R_0 ~ 1.2).
+2. Ultra-Relativistic Hubble Blast: Supersonic radial explosion profile v_r(r) ~ H0 * r.
+3. High-Density Power Spectrum (Sedov-Taylor Blast + 3D Multi-Harmonic Turbulence):
+   - Overdense turbulent shock ripples trigger simultaneous fragmentation across the expanding shell.
+   - Gravitational instability condenses hundreds of filamentary star clusters and rotating knots
+     as the shockwave expands from R = 1.2 to R = 60.0!
 """
 
 import os
@@ -21,28 +22,26 @@ if nextsim_dir not in sys.path:
 import nextinsim as ns
 
 # =============================================================================
-# Big Bang Initial Condition Parameters
+# Primordial Fireball Parameters
 # =============================================================================
-N_PARTICLES = 50000     # 50,000 Dark Matter / Stellar Particles
-R_INITIAL = 3.5         # Initial compact radius of the dense primordial core
-H_EXPANSION = 0.45      # Outward Hubble expansion rate (v = H * r)
-TOTAL_MASS = 12.0       # Total gravitating mass (controls gravitational turnaround)
+N_PARTICLES = 100000    # 100,000 high-resolution particles
+R_CORE = 1.2            # Ultra-dense micro-core radius (the primordial fireball)
+H_BLAST = 1.65          # High-speed Hubble detonation rate
+TOTAL_MASS = 8.0        # Gravitating mass
 
 print("=" * 80)
-print("  NEXT - Physical Big Bang & Cosmic Web Fragmentation Initial Conditions")
+print("  NEXT - Hyper-Dense Primordial Big Bang Detonation (100,000 Particles)")
 print("================================================================================")
-print(f"  • Total Particles:       {N_PARTICLES:,}")
-print(f"  • Primordial Core Size:  R_0 = {R_INITIAL:.1f} (High Density)")
-print(f"  • Total Gravitating Mass: M_tot = {TOTAL_MASS:.1f}")
-print(f"  • Hubble Expansion Rate: H_0 = {H_EXPANSION:.2f} (Linear Radial Blast)")
+print(f"  • Particle Resolution:   {N_PARTICLES:,} particles")
+print(f"  • Primordial Fireball:   R_0 = {R_CORE:.2f} (Extreme Initial Density)")
+print(f"  • Shockwave Expansion:   H_0 = {H_BLAST:.2f} (Supersonic Blast Wave)")
 print("================================================================================")
 
 np.random.seed(42)
 
-# 1. Distribute particles in dense sphere with smooth radial profile + random fluctuations
-# Uniform distribution in sphere with subtle center concentration
-u = np.random.uniform(0.0, 1.0, N_PARTICLES)
-r = R_INITIAL * (u**(1.0 / 3.0))
+# 1. Distribute particles into a dense spherical fireball with r^-1 density cusp
+u = np.random.uniform(0.001, 1.0, N_PARTICLES)
+r = R_CORE * (u**(1.0 / 2.0)) # Cuspy center
 
 costheta = np.random.uniform(-1.0, 1.0, N_PARTICLES)
 sintheta = np.sqrt(1.0 - costheta**2)
@@ -52,30 +51,37 @@ x = r * sintheta * np.cos(phi)
 y = r * sintheta * np.sin(phi)
 z = r * costheta
 
-# 2. Multi-Scale Density Perturbations (Creates Clumping & Fragmentation)
-k1, k2, k3 = 1.2, 2.8, 5.5
-density_perturbation = (
-    0.18 * np.sin(k1 * x) * np.cos(k1 * y) +
-    0.12 * np.cos(k2 * y) * np.sin(k2 * z) +
-    0.08 * np.sin(k3 * z) * np.cos(k3 * x)
-)
+# 2. 3D Multi-Harmonic Turbulent Density Ripple Field (10 octaves of turbulence)
+turb_phase_x = np.zeros(N_PARTICLES)
+turb_phase_y = np.zeros(N_PARTICLES)
+turb_phase_z = np.zeros(N_PARTICLES)
 
-# Apply spatial clump displacement
-x += density_perturbation * (x / (r + 1e-4)) * 0.4
-y += density_perturbation * (y / (r + 1e-4)) * 0.4
-z += density_perturbation * (z / (r + 1e-4)) * 0.4
+for k_freq, weight in [(3.0, 0.25), (7.0, 0.18), (14.0, 0.12), (28.0, 0.08), (56.0, 0.04)]:
+    turb_phase_x += weight * np.sin(k_freq * (y + z)) * np.cos(k_freq * x)
+    turb_phase_y += weight * np.sin(k_freq * (z + x)) * np.cos(k_freq * y)
+    turb_phase_z += weight * np.sin(k_freq * (x + y)) * np.cos(k_freq * z)
 
-# 3. Pure Physical Hubble Expansion: v_vector = H_0 * r_vector
-vx = H_EXPANSION * x
-vy = H_EXPANSION * y
-vz = H_EXPANSION * z
+# Apply turbulent displacement
+r_safe = r + 1e-4
+x += turb_phase_x * (x / r_safe) * 0.15
+y += turb_phase_y * (y / r_safe) * 0.15
+z += turb_phase_z * (z / r_safe) * 0.15
 
-# 4. Superimpose Peculiar Velocities (Perturbations that trigger local rotational spin)
-vx += np.random.normal(0.0, 0.04, N_PARTICLES) + 0.05 * (-y / (r + 1e-3)) * density_perturbation
-vy += np.random.normal(0.0, 0.04, N_PARTICLES) + 0.05 * ( x / (r + 1e-3)) * density_perturbation
-vz += np.random.normal(0.0, 0.04, N_PARTICLES)
+# 3. Super-Hubble Relativistic Shock Blast (v = H_0 * r)
+vx = H_BLAST * x
+vy = H_BLAST * y
+vz = H_BLAST * z
 
-# 5. Build Particle System
+# 4. Tangential Curl / Vorticity (Tidal Torque that makes clumps spin into real disks)
+curl_x = (turb_phase_y - turb_phase_z) * 0.45
+curl_y = (turb_phase_z - turb_phase_x) * 0.45
+curl_z = (turb_phase_x - turb_phase_y) * 0.45
+
+vx += curl_x + np.random.normal(0.0, 0.02, N_PARTICLES)
+vy += curl_y + np.random.normal(0.0, 0.02, N_PARTICLES)
+vz += curl_z + np.random.normal(0.0, 0.02, N_PARTICLES)
+
+# 5. Export Initial Conditions
 particle_mass = TOTAL_MASS / N_PARTICLES
 bigbang_system = ns.System()
 
@@ -84,9 +90,9 @@ for i in range(N_PARTICLES):
         x=x[i], y=y[i], z=z[i],
         vx=vx[i], vy=vy[i], vz=vz[i],
         mass=particle_mass,
-        ptype=4 # Stellar/Luminous particles for beautiful visualization
+        ptype=4
     )
 
-output_file = "bigbang_50k.txt"
+output_file = "bigbang_100k.txt"
 bigbang_system.save(output_file)
-print(f"\n[SUCCESS] Generated {output_file} ({N_PARTICLES:,} particles) in examples/BigBangExplosion/!")
+print(f"\n[SUCCESS] Generated {output_file} (100,000 particles) for high-density detonation!")

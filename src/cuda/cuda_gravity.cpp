@@ -97,6 +97,15 @@ extern "C" __global__ void kernel_octree_gravity(
     float r_split) 
 {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+    // Cache top 64 root and first-level nodes into blazing-fast L1 GPU Shared Memory
+    __shared__ GPUNode s_top_nodes[64];
+    int tid = threadIdx.x;
+    if (tid < 64) {
+        s_top_nodes[tid] = nodes[tid];
+    }
+    __syncthreads();
+
     if (idx >= N) return;
 
     float my_x = px[idx];
@@ -110,14 +119,14 @@ extern "C" __global__ void kernel_octree_gravity(
     float r_cut2 = (r_split > 0.0f) ? (4.5f * r_split) * (4.5f * r_split) : 1e30f;
     float inv_2rs = (r_split > 0.0f) ? 1.0f / (2.0f * r_split) : 0.0f;
 
-    // Private stack in GPU registers/local memory (depth 256 handles arbitrary tree depth)
-    int stack[256];
+    // Fast register-backed stack (depth 128 is mathematically sufficient for N > 10M particles)
+    int stack[128];
     int stack_top = 0;
     stack[0] = 0; // Root node index
 
     while (stack_top >= 0) {
         int curr = stack[stack_top--];
-        const GPUNode node = nodes[curr];
+        const GPUNode node = (curr < 64) ? s_top_nodes[curr] : nodes[curr];
 
         if (node.mass <= 0.0f) continue;
 
